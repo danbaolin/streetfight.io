@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>YoossshhhhiiiiiMade — Test Edition</title>
+  <link rel="stylesheet" href="style.css?v=33" />
+</head>
+<body>
+  <div class="arcade-shell">
+    <header class="top-bar">
+      <div class="brand">
+        <span class="badge">TEST EDITION</span>
+        <h1>YoossshhhhiiiiiMade</h1>
+      </div>
+      <div class="top-controls">
+        <button id="btn-mute" class="pill icon-pill" title="Toggle Sound (M)">🔊 SFX</button>
+        <button id="btn-bgm" class="pill icon-pill" title="Toggle Music">🎵 BGM</button>
+        <button id="btn-fullscreen" class="pill icon-pill" title="切換全螢幕 (橫向遊玩最佳)">⛶ 全螢幕</button>
+        <button id="btn-help-modal" class="pill icon-pill" title="操作與角色出招說明">❓ 說明</button>
+        <button id="btn-dev-drawer" class="pill icon-pill dev-toggle" title="快速換角 / 跳關 / 觸控鍵設定">⚙️ 測試選單</button>
+      </div>
+
+      <!-- Collapsible Floating Test / Dev Drawer -->
+      <div id="dev-drawer" class="dev-drawer" aria-hidden="true">
+        <div class="drawer-section">
+          <div class="drawer-label">快速切換角色</div>
+          <div class="drawer-grid">
+            <button id="btn-char-mustache" class="pill active" title="Play as Mustache Hero">👨🏻 Mustache</button>
+            <button id="btn-char-samurai" class="pill" title="Play as Street Samurai">⚔️ Samurai</button>
+            <button id="btn-char-momo" class="pill" title="Play as Momo">🦇 Momo</button>
+            <button id="btn-char-raven" class="pill" title="Play as Raven">🐦‍⬛ Raven</button>
+            <button id="btn-char-shaka" class="pill" title="Play as 釋迦">☸️ 釋迦</button>
+            <button id="btn-char-alice" class="pill" title="Play as Alice (言靈支配・指虎破甲)">🌹 Alice</button>
+            <button id="btn-char-ironfist" class="pill" title="Play as 鐵拳 (白繃帶重拳・鐵山靠)">🥊 鐵拳</button>
+            <button id="btn-char-nightheron" class="pill" title="Play as 夜鷺 (插袋腿法・雨幕水刃)">👞 夜鷺</button>
+          </div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-label">快速跳關 / 世界地圖</div>
+          <div class="drawer-grid">
+            <button id="btn-stage-1" class="pill active" title="Stage 1: Harbour Street">Stage 1</button>
+            <button id="btn-stage-2" class="pill" title="Stage 2: The Restroom">Stage 2</button>
+            <button id="btn-stage-airport" class="pill" title="Stage 3: 末班機">✈️ 末班機</button>
+            <button id="btn-stage-dadaocheng" class="pill" title="台灣・大稻埕 (經典)">🏮 大稻埕(舊)</button>
+            <button id="btn-stage-train" class="pill" title="山線特快列車">🚂 山線特快</button>
+            <button id="btn-map" class="pill" title="Open Island World Map">🗺️ 島嶼地圖</button>
+          </div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-label">🇹🇼 台灣巡迴（7 關＋21 新敵人）</div>
+          <div class="drawer-grid">
+            <button class="pill wt-stage-btn" data-stage-id="101" title="信義・台北 101">🏙️ 台北 101</button>
+            <button class="pill wt-stage-btn" data-stage-id="102" title="九份老街">🏮 九份老街</button>
+            <button class="pill wt-stage-btn" data-stage-id="103" title="日月潭">🌊 日月潭</button>
+            <button class="pill wt-stage-btn" data-stage-id="104" title="阿里山森林鐵路">🌲 阿里山</button>
+            <button class="pill wt-stage-btn" data-stage-id="105" title="安平古堡">🧱 安平古堡</button>
+            <button class="pill wt-stage-btn" data-stage-id="106" title="高雄港">⚓ 高雄港</button>
+            <button class="pill wt-stage-btn" data-stage-id="107" title="大稻埕・霞海城隍廟">⛩️ 大稻埕</button>
+          </div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-label">🇯🇵 日本巡迴（6 關雙層視差＋18 新敵人）</div>
+          <div class="drawer-grid">
+            <button class="pill wt-stage-btn" data-stage-id="201" title="淺草雷門">⛩️ 淺草雷門</button>
+            <button class="pill wt-stage-btn" data-stage-id="202" title="晴空塔與隅田川">🗼 晴空塔</button>
+            <button class="pill wt-stage-btn" data-stage-id="203" title="富士山與河口湖">🗻 富士山</button>
+            <button class="pill wt-stage-btn" data-stage-id="204" title="伏見稻荷">🦊 伏見稻荷</button>
+            <button class="pill wt-stage-btn" data-stage-id="205" title="大阪道頓堀">🦀 大阪道頓堀</button>
+            <button class="pill wt-stage-btn" data-stage-id="206" title="宮島海上大鳥居">⛩️ 宮島</button>
+          </div>
+        </div>
+        <div class="drawer-section drawer-row">
+          <div class="drawer-label">介面控制</div>
+          <button id="btn-touch-toggle" class="pill" title="Toggle On-Screen Touch Controls">📱 螢幕觸控鍵</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="stage-frame">
+      <canvas id="game" width="1920" height="1080"></canvas>
+
+      <!-- Mobile Virtual Joystick & Arcade Action Buttons -->
+      <div id="touch-controls" class="touch-controls" aria-label="Touch Controls">
+        <div id="joy-zone" class="joy-zone">
+          <div class="joy-base">
+            <div id="joy-knob" class="joy-knob"></div>
+          </div>
+        </div>
+        <div class="action-pad">
+          <button id="tbtn-ult" class="tbtn tbtn-ult" type="button">⚡<small>大絕</small></button>
+          <button id="tbtn-jump" class="tbtn tbtn-jump" type="button">💥<small id="tbtn-skill-label">震地</small><span class="tbtn-cd-mask" id="tbtn-skill-mask"></span><span class="tbtn-cd-num" id="tbtn-skill-num"></span></button>
+          <button id="tbtn-atk" class="tbtn tbtn-atk" type="button">⚔️<small>攻擊</small></button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Sleek Help & Character Move-List Modal -->
+  <div id="help-modal" class="help-modal" aria-hidden="true">
+    <div class="help-card" role="dialog" aria-label="操作與技能說明">
+      <div class="help-header">
+        <h2>🎮 操作按鍵 &amp; 當前角色出招表</h2>
+        <button id="btn-help-close" class="pill icon-pill" type="button">✕</button>
+      </div>
+      <div class="help-keys">
+        <div class="help-key-row"><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></span><span>移動 / 選角 / 選島</span></div>
+        <div class="help-key-row"><span class="keys"><kbd>J</kbd> / <kbd>Z</kbd> / <kbd>Space</kbd></span><span id="help-atk-desc">平A 連擊</span></div>
+        <div class="help-key-row"><span class="keys"><kbd>K</kbd> / <kbd>X</kbd></span><span id="help-skill-desc">專屬小招（帶無敵幀可閃低掃）</span></div>
+        <div class="help-key-row highlight"><span class="keys"><kbd>R</kbd> / <kbd>L</kbd> / <kbd>C</kbd></span><span id="help-ult-desc">大絕招（擊敗小王逐階解鎖 Lv.1～3）</span></div>
+        <div class="help-key-row"><span class="keys"><kbd>P</kbd> / <kbd>M</kbd></span><span>暫停遊戲 ／ 開關音效</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="sprites.js?v=39"></script>
+  <script src="bio_art.js?v=37"></script>
+  <script src="airport_stage.js?v=37"></script>
+  <script src="world_tour.js?v=37"></script>
+  <script src="audio.js?v=37"></script>
+  <script src="game.js?v=37"></script>
+</body>
+</html>
