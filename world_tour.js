@@ -13,7 +13,7 @@
       bossBanner: "信義區 BOSS「黑曜執行長」降臨！",
       bossBarColor: "#2563eb",
       bgType: "panorama",
-      stageWidth: 1800,
+      stageWidth: 1080,
       bgKey: "tw_bg_01",
       bgSrc: `assets/taiwan/stages/01-taipei101.png?${V}`,
       enemies: {
@@ -31,7 +31,7 @@
       bossBanner: "九份 BOSS「霧燈掌櫃」現身！",
       bossBarColor: "#dc2626",
       bgType: "panorama",
-      stageWidth: 1800,
+      stageWidth: 1080,
       bgKey: "tw_bg_02",
       bgSrc: `assets/taiwan/stages/02-jiufen.png?${V}`,
       enemies: {
@@ -49,7 +49,7 @@
       bossBanner: "日月潭 BOSS「逆潮船長」出擊！",
       bossBarColor: "#0284c7",
       bgType: "panorama",
-      stageWidth: 1800,
+      stageWidth: 1080,
       bgKey: "tw_bg_03",
       bgSrc: `assets/taiwan/stages/03-sunmoonlake.png?${V}`,
       enemies: {
@@ -67,7 +67,7 @@
       bossBanner: "阿里山 BOSS「赤爐車長」全速進逼！",
       bossBarColor: "#b45309",
       bgType: "panorama",
-      stageWidth: 1800,
+      stageWidth: 1080,
       bgKey: "tw_bg_04",
       bgSrc: `assets/taiwan/stages/04-alishan.png?${V}`,
       enemies: {
@@ -85,7 +85,7 @@
       bossBanner: "安平 BOSS「赤磚堡主」鎮守城門！",
       bossBarColor: "#c2410c",
       bgType: "panorama",
-      stageWidth: 1800,
+      stageWidth: 1080,
       bgKey: "tw_bg_05",
       bgSrc: `assets/taiwan/stages/05-anping.png?${V}`,
       enemies: {
@@ -103,7 +103,7 @@
       bossBanner: "高雄港 BOSS「鋼鉤領班」登場！",
       bossBarColor: "#d97706",
       bgType: "panorama",
-      stageWidth: 1800,
+      stageWidth: 1080,
       bgKey: "tw_bg_06",
       bgSrc: `assets/taiwan/stages/06-kaohsiung.png?${V}`,
       enemies: {
@@ -121,7 +121,7 @@
       bossBanner: "大稻埕 BOSS「藍白拖角頭」霸氣登場！",
       bossBarColor: "#dc2626",
       bgType: "panorama",
-      stageWidth: 1800,
+      stageWidth: 1080,
       bgKey: "tw_bg_07",
       bgSrc: `assets/taiwan/stages/07-dadaocheng.png?${V}`,
       enemies: {
@@ -254,6 +254,95 @@
     },
   };
 
+  // ======================== 🌏 SOUTHEAST ASIA TOUR (24 Stages, 72 Enemies) ========================
+  const SEA_PACKS = [
+    {
+      baseId: 301,
+      region: "malaysia",
+      flag: "🇲🇾",
+      color: "#eab308",
+      dir: "assets/sea/malaysia/Malaysia-Arcade",
+      stages: [
+        ["01", "吉隆坡・雙峰塔", "銀塔跑手", "天橋盾衛", "雙峰鋼將"],
+        ["02", "吉隆坡・中央市場", "彩印信使", "墨輪壯士", "蠟染幻匠"],
+        ["03", "檳城・喬治市", "壁畫快手", "騎樓盾兵", "彩壁幻師"],
+        ["04", "馬六甲・紅屋廣場", "紅巷斥候", "齒輪守衛", "紅鐘城主"],
+        ["05", "怡保・舊街場", "白咖啡跑手", "銅壺鐵衛", "蒸汽掌櫃"],
+        ["06", "亞庇・海濱", "夕港信使", "浮標重衛", "落日船主"],
+      ],
+    },
+    {
+      baseId: 401,
+      region: "singapore",
+      flag: "🇸🇬",
+      color: "#ef4444",
+      dir: "assets/sea/singapore/Singapore-Arcade",
+      stages: [
+        ["01", "濱海灣", "銀灣快手", "白瓣鐵衛", "天際塔王"],
+        ["02", "濱海灣花園", "藤影斥候", "溫室重衛", "紫冠樹王"],
+        ["03", "牛車水", "赤巷跑手", "竹箱力士", "紅燈掌櫃"],
+        ["04", "小印度", "花街信使", "黃銅重兵", "彩窗機王"],
+        ["05", "克拉碼頭", "河畔斥候", "木桶壯漢", "暮河船長"],
+        ["06", "樟宜・星耀樟宜", "航廊快手", "行李鐵衛", "雨漩司令"],
+      ],
+    },
+    {
+      baseId: 501,
+      region: "thailand",
+      flag: "🇹🇭",
+      color: "#f59e0b",
+      dir: "assets/sea/thailand/Thailand-Arcade",
+      stages: [
+        ["01", "曼谷・鄭王廟", "晨渡斥候", "彩瓷盾衛", "白瓷塔將"],
+        ["02", "曼谷・耀華力路", "霓虹跑手", "鍍鉻鐵衛", "金街看板王"],
+        ["03", "大城・古城", "赤磚探子", "古城守衛", "盤根堡主"],
+        ["04", "清邁・古城門", "城門旗手", "銅鑼壯士", "赤鼓統領"],
+        ["05", "素可泰・歷史公園", "青蓮斥候", "石紋盾衛", "蓮池石王"],
+        ["06", "普吉・老城", "彩巷信使", "百葉盾兵", "花磚領主"],
+      ],
+    },
+    {
+      baseId: 601,
+      region: "vietnam",
+      flag: "🇻🇳",
+      color: "#dc2626",
+      dir: "assets/sea/vietnam/Vietnam-Arcade",
+      stages: [
+        ["01", "河內・還劍湖", "赤橋信使", "翠漆盾衛", "赤橋鎮守"],
+        ["02", "河內・老城區", "巷口快手", "棚架鐵衛", "百窗掌櫃"],
+        ["03", "順化・皇城", "紫旗斥候", "朱漆門衛", "金瓦城將"],
+        ["04", "會安・古城", "提燈快手", "靛染力士", "千燈偶師"],
+        ["05", "峴港・龍橋", "藍光巡手", "鉚釘重兵", "金龍橋王"],
+        ["06", "胡志明市・濱城市場", "街市探子", "木箱扛夫", "鐘樓商主"],
+      ],
+    },
+  ];
+
+  for (const pack of SEA_PACKS) {
+    pack.stages.forEach(([num, area, scoutName, guardName, bossName], idx) => {
+      const id = pack.baseId + idx;
+      const isLast = idx === pack.stages.length - 1;
+      STAGES[id] = {
+        id,
+        nextId: isLast ? null : id + 1,
+        region: pack.region,
+        hudName: `${pack.flag} ${area}`,
+        intro: `${pack.flag} ${area}！突破${scoutName}與${guardName}，擊敗${bossName}！`,
+        bossBanner: `${area} BOSS「${bossName}」降臨！`,
+        bossBarColor: pack.color,
+        bgType: "panorama",
+        stageWidth: 1080,
+        bgKey: `sea_${pack.region}_${num}_bg`,
+        bgSrc: `${pack.dir}/${num}/stage.png?${V}`,
+        enemies: {
+          scout: { key: `sea_${pack.region}_${num}_scout`, name: scoutName, src: `${pack.dir}/${num}/scout.png?${V}` },
+          guard: { key: `sea_${pack.region}_${num}_guard`, name: guardName, src: `${pack.dir}/${num}/guard.png?${V}` },
+          boss: { key: `sea_${pack.region}_${num}_boss`, name: `${area} BOSS — ${bossName}`, src: `${pack.dir}/${num}/boss.png?${V}` },
+        },
+      };
+    });
+  }
+
   function getStage(id) {
     return STAGES[id] || null;
   }
@@ -275,8 +364,9 @@
   function buildWaves(id) {
     const cfg = STAGES[id];
     if (!cfg) return [];
-    if (cfg.stageWidth <= 1280) {
-      // Japan 1280px 2-layer parallax stages: 3 crisp waves
+    if (cfg.stageWidth <= 1120) {
+      // Taiwan & Southeast Asia 1080px 1:1 panoramic stages:
+      // triggerX ≈ lockX + 240 matches cameraX = player.x - W*0.38 so locking NEVER lurches the camera!
       return [
         {
           triggerX: 60,
@@ -291,30 +381,69 @@
         },
         {
           triggerX: 460,
-          lockX: 320,
+          lockX: 220,
           spawned: false,
           cleared: false,
           list: [
-            { type: "wt_scout", x: 280, y: 274 },
-            { type: "wt_guard", x: 880, y: 262 },
-            { type: "wt_scout", x: 930, y: 294 },
-            { type: "wt_guard", x: 960, y: 276 },
+            { type: "wt_scout", x: 190, y: 276 },
+            { type: "wt_guard", x: 850, y: 262 },
+            { type: "wt_scout", x: 890, y: 294 },
+            { type: "wt_guard", x: 920, y: 278 },
           ],
         },
         {
-          triggerX: 840,
-          lockX: 640,
+          triggerX: 680,
+          lockX: 440,
           spawned: false,
           cleared: false,
           list: [
-            { type: "wt_boss", x: 1180, y: 274 },
-            { type: "wt_scout", x: 610, y: 258 },
-            { type: "wt_guard", x: 1220, y: 296 },
+            { type: "wt_boss", x: 1020, y: 274 },
+            { type: "wt_scout", x: 410, y: 258 },
+            { type: "wt_guard", x: 1050, y: 296 },
           ],
         },
       ];
     }
-    // Taiwan 1800px panoramic stages: 3 scenic waves
+    if (cfg.stageWidth <= 1280) {
+      // Japan 1280px 2-layer parallax stages: 3 crisp waves with seamless camera lock (triggerX ≈ lockX + 240)
+      return [
+        {
+          triggerX: 60,
+          lockX: 0,
+          spawned: false,
+          cleared: false,
+          list: [
+            { type: "wt_scout", x: 460, y: 256 },
+            { type: "wt_guard", x: 540, y: 288 },
+            { type: "wt_scout", x: 590, y: 270 },
+          ],
+        },
+        {
+          triggerX: 560,
+          lockX: 320,
+          spawned: false,
+          cleared: false,
+          list: [
+            { type: "wt_scout", x: 290, y: 274 },
+            { type: "wt_guard", x: 940, y: 262 },
+            { type: "wt_scout", x: 980, y: 294 },
+            { type: "wt_guard", x: 1010, y: 276 },
+          ],
+        },
+        {
+          triggerX: 880,
+          lockX: 640,
+          spawned: false,
+          cleared: false,
+          list: [
+            { type: "wt_boss", x: 1200, y: 274 },
+            { type: "wt_scout", x: 610, y: 258 },
+            { type: "wt_guard", x: 1240, y: 296 },
+          ],
+        },
+      ];
+    }
+    // Fallback wide panoramic stages
     return [
       {
         triggerX: 90,
@@ -328,7 +457,7 @@
         ],
       },
       {
-        triggerX: 680,
+        triggerX: 800,
         lockX: 560,
         spawned: false,
         cleared: false,
@@ -340,7 +469,7 @@
         ],
       },
       {
-        triggerX: 1280,
+        triggerX: 1400,
         lockX: 1160,
         spawned: false,
         cleared: false,
@@ -384,8 +513,12 @@
       const ratio = Math.max(0, Math.min(1, cameraX / maxCam));
       const scrollX = Math.round(ratio * Math.max(0, drawW - W));
       ctx.save();
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
+      if (bg.height === H) {
+        ctx.imageSmoothingEnabled = false;
+      } else {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "medium";
+      }
       ctx.drawImage(bg, -scrollX, 0, drawW, H);
       ctx.restore();
       return true;

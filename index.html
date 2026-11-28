@@ -6,22 +6,23 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>YoossshhhhiiiiiMade — Test Edition</title>
-  <link rel="stylesheet" href="style.css?v=33" />
+  <title>YoossshhhhiiiiiMade — Arcade Edition</title>
+  <link rel="stylesheet" href="style.css?v=72" />
 </head>
 <body>
   <div class="arcade-shell">
     <header class="top-bar">
       <div class="brand">
-        <span class="badge">TEST EDITION</span>
+        <span class="badge">ARCADE EDITION</span>
         <h1>YoossshhhhiiiiiMade</h1>
       </div>
       <div class="top-controls">
         <button id="btn-mute" class="pill icon-pill" title="Toggle Sound (M)">🔊 SFX</button>
         <button id="btn-bgm" class="pill icon-pill" title="Toggle Music">🎵 BGM</button>
+        <button id="btn-shader" class="pill icon-pill" title="切換 WebGL 著色器畫質（霓虹 HD / 復古 CRT / 原始）">✨ 霓虹 HD</button>
         <button id="btn-fullscreen" class="pill icon-pill" title="切換全螢幕 (橫向遊玩最佳)">⛶ 全螢幕</button>
         <button id="btn-help-modal" class="pill icon-pill" title="操作與角色出招說明">❓ 說明</button>
-        <button id="btn-dev-drawer" class="pill icon-pill dev-toggle" title="快速換角 / 跳關 / 觸控鍵設定">⚙️ 測試選單</button>
+        <button id="btn-dev-drawer" class="pill icon-pill dev-toggle" title="快速換角 / 關卡速選">🗺️ 關卡速選</button>
       </div>
 
       <!-- Collapsible Floating Test / Dev Drawer -->
@@ -37,6 +38,10 @@
             <button id="btn-char-alice" class="pill" title="Play as Alice (言靈支配・指虎破甲)">🌹 Alice</button>
             <button id="btn-char-ironfist" class="pill" title="Play as 鐵拳 (白繃帶重拳・鐵山靠)">🥊 鐵拳</button>
             <button id="btn-char-nightheron" class="pill" title="Play as 夜鷺 (插袋腿法・雨幕水刃)">👞 夜鷺</button>
+            <button id="btn-char-magic" class="pill" title="Play as 瑪姬 (黑魔法・暗影女皇召喚)">🔮 瑪姬</button>
+            <button id="btn-char-ling" class="pill" title="Play as 鈴 (四象召喚・青龍白虎朱雀玄武)">🏮 鈴</button>
+            <button id="btn-char-rose" class="pill" title="Play as 蘿絲 (精神支配・三階煉獄火拳)">🔥 蘿絲</button>
+            <button id="btn-char-fallen" class="pill" title="Play as 墮落天使 (羽翼風壓・遠程天降白骨審判)">🪽 墮落天使</button>
           </div>
         </div>
         <div class="drawer-section">
@@ -73,21 +78,68 @@
             <button class="pill wt-stage-btn" data-stage-id="206" title="宮島海上大鳥居">⛩️ 宮島</button>
           </div>
         </div>
-        <div class="drawer-section drawer-row">
-          <div class="drawer-label">介面控制</div>
-          <button id="btn-touch-toggle" class="pill" title="Toggle On-Screen Touch Controls">📱 螢幕觸控鍵</button>
+        <div class="drawer-section">
+          <div class="drawer-label">🇲🇾 馬來西亞巡迴（6 關＋18 新敵人）</div>
+          <div class="drawer-grid">
+            <button class="pill wt-stage-btn" data-stage-id="301" title="吉隆坡・雙峰塔">🏙️ 雙峰塔</button>
+            <button class="pill wt-stage-btn" data-stage-id="302" title="吉隆坡・中央市場">🎨 中央市場</button>
+            <button class="pill wt-stage-btn" data-stage-id="303" title="檳城・喬治市">🏘️ 檳城喬治市</button>
+            <button class="pill wt-stage-btn" data-stage-id="304" title="馬六甲・紅屋廣場">🕰️ 馬六甲紅屋</button>
+            <button class="pill wt-stage-btn" data-stage-id="305" title="怡保・舊街場">☕ 怡保舊街場</button>
+            <button class="pill wt-stage-btn" data-stage-id="306" title="亞庇・海濱">🌅 亞庇海濱</button>
+          </div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-label">🇸🇬 新加坡巡迴（6 關＋18 新敵人）</div>
+          <div class="drawer-grid">
+            <button class="pill wt-stage-btn" data-stage-id="401" title="濱海灣">🌊 濱海灣</button>
+            <button class="pill wt-stage-btn" data-stage-id="402" title="濱海灣花園">🌳 濱海灣花園</button>
+            <button class="pill wt-stage-btn" data-stage-id="403" title="牛車水">🏮 牛車水</button>
+            <button class="pill wt-stage-btn" data-stage-id="404" title="小印度">🕌 小印度</button>
+            <button class="pill wt-stage-btn" data-stage-id="405" title="克拉碼頭">⚓ 克拉碼頭</button>
+            <button class="pill wt-stage-btn" data-stage-id="406" title="樟宜・星耀樟宜">✈️ 星耀樟宜</button>
+          </div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-label">🇹🇭 泰國巡迴（6 關＋18 新敵人）</div>
+          <div class="drawer-grid">
+            <button class="pill wt-stage-btn" data-stage-id="501" title="曼谷・鄭王廟">🛕 鄭王廟</button>
+            <button class="pill wt-stage-btn" data-stage-id="502" title="曼谷・耀華力路">🏮 耀華力路</button>
+            <button class="pill wt-stage-btn" data-stage-id="503" title="大城・古城">🧱 大城古城</button>
+            <button class="pill wt-stage-btn" data-stage-id="504" title="清邁・古城門">🏯 清邁古城門</button>
+            <button class="pill wt-stage-btn" data-stage-id="505" title="素可泰・歷史公園">🪷 素可泰</button>
+            <button class="pill wt-stage-btn" data-stage-id="506" title="普吉・老城">🏘️ 普吉老城</button>
+          </div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-label">🇻🇳 越南巡迴（6 關＋18 新敵人）</div>
+          <div class="drawer-grid">
+            <button class="pill wt-stage-btn" data-stage-id="601" title="河內・還劍湖">🌉 還劍湖</button>
+            <button class="pill wt-stage-btn" data-stage-id="602" title="河內・老城區">🏘️ 河內老城</button>
+            <button class="pill wt-stage-btn" data-stage-id="603" title="順化・皇城">🏯 順化皇城</button>
+            <button class="pill wt-stage-btn" data-stage-id="604" title="會安・古城">🏮 會安古城</button>
+            <button class="pill wt-stage-btn" data-stage-id="605" title="峴港・龍橋">🐉 峴港龍橋</button>
+            <button class="pill wt-stage-btn" data-stage-id="606" title="胡志明市・濱城市場">🕰️ 濱城市場</button>
+          </div>
         </div>
       </div>
     </header>
 
     <main class="stage-frame">
       <canvas id="game" width="1920" height="1080"></canvas>
+      <canvas id="shader-canvas" width="1920" height="1080" aria-hidden="true"></canvas>
 
       <!-- Mobile Virtual Joystick & Arcade Action Buttons -->
       <div id="touch-controls" class="touch-controls" aria-label="Touch Controls">
         <div id="joy-zone" class="joy-zone">
-          <div class="joy-base">
-            <div id="joy-knob" class="joy-knob"></div>
+          <div id="joy-base" class="joy-base">
+            <div id="joy-dir-arc" class="joy-dir-arc"></div>
+            <div id="joy-knob" class="joy-knob">
+              <svg class="joy-emblem" viewBox="0 0 32 32" aria-hidden="true">
+                <polygon points="16,3 24,16 16,29 8,16" fill="none" stroke="rgba(226,242,255,0.72)" stroke-width="1.6"/>
+                <polygon points="16,9 20,16 16,23 12,16" fill="rgba(210,235,255,0.28)" stroke="rgba(226,242,255,0.85)" stroke-width="1.1"/>
+              </svg>
+            </div>
           </div>
         </div>
         <div class="action-pad">
@@ -116,11 +168,12 @@
     </div>
   </div>
 
-  <script src="sprites.js?v=39"></script>
-  <script src="bio_art.js?v=37"></script>
-  <script src="airport_stage.js?v=37"></script>
-  <script src="world_tour.js?v=37"></script>
-  <script src="audio.js?v=37"></script>
-  <script src="game.js?v=37"></script>
+  <script src="sprites.js?v=73"></script>
+  <script src="bio_art.js?v=41"></script>
+  <script src="airport_stage.js?v=41"></script>
+  <script src="world_tour.js?v=55"></script>
+  <script src="audio.js?v=56"></script>
+  <script src="shader_fx.js?v=60"></script>
+  <script src="game.js?v=73"></script>
 </body>
 </html>

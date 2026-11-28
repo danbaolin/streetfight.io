@@ -1,0 +1,218 @@
+[
+  {
+    "stage": "01",
+    "area": "曼谷・鄭王廟",
+    "name": "晨渡斥候",
+    "role": "scout",
+    "file": "01/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "01",
+    "area": "曼谷・鄭王廟",
+    "name": "彩瓷盾衛",
+    "role": "guard",
+    "file": "01/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "01",
+    "area": "曼谷・鄭王廟",
+    "name": "白瓷塔將",
+    "role": "boss",
+    "file": "01/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "曼谷・耀華力路",
+    "name": "霓虹跑手",
+    "role": "scout",
+    "file": "02/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "曼谷・耀華力路",
+    "name": "鍍鉻鐵衛",
+    "role": "guard",
+    "file": "02/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "曼谷・耀華力路",
+    "name": "金街看板王",
+    "role": "boss",
+    "file": "02/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "大城・古城",
+    "name": "赤磚探子",
+    "role": "scout",
+    "file": "03/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "大城・古城",
+    "name": "古城守衛",
+    "role": "guard",
+    "file": "03/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "大城・古城",
+    "name": "盤根堡主",
+    "role": "boss",
+    "file": "03/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "清邁・古城門",
+    "name": "城門旗手",
+    "role": "scout",
+    "file": "04/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "清邁・古城門",
+    "name": "銅鑼壯士",
+    "role": "guard",
+    "file": "04/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "清邁・古城門",
+    "name": "赤鼓統領",
+    "role": "boss",
+    "file": "04/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "素可泰・歷史公園",
+    "name": "青蓮斥候",
+    "role": "scout",
+    "file": "05/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "素可泰・歷史公園",
+    "name": "石紋盾衛",
+    "role": "guard",
+    "file": "05/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "素可泰・歷史公園",
+    "name": "蓮池石王",
+    "role": "boss",
+    "file": "05/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "普吉・老城",
+    "name": "彩巷信使",
+    "role": "scout",
+    "file": "06/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "普吉・老城",
+    "name": "百葉盾兵",
+    "role": "guard",
+    "file": "06/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "普吉・老城",
+    "name": "花磚領主",
+    "role": "boss",
+    "file": "06/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  }
+]

@@ -1,0 +1,218 @@
+[
+  {
+    "stage": "01",
+    "area": "吉隆坡・雙峰塔",
+    "name": "銀塔跑手",
+    "role": "scout",
+    "file": "01/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "01",
+    "area": "吉隆坡・雙峰塔",
+    "name": "天橋盾衛",
+    "role": "guard",
+    "file": "01/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "01",
+    "area": "吉隆坡・雙峰塔",
+    "name": "雙峰鋼將",
+    "role": "boss",
+    "file": "01/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "吉隆坡・中央市場",
+    "name": "彩印信使",
+    "role": "scout",
+    "file": "02/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "吉隆坡・中央市場",
+    "name": "墨輪壯士",
+    "role": "guard",
+    "file": "02/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "吉隆坡・中央市場",
+    "name": "蠟染幻匠",
+    "role": "boss",
+    "file": "02/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "檳城・喬治市",
+    "name": "壁畫快手",
+    "role": "scout",
+    "file": "03/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "檳城・喬治市",
+    "name": "騎樓盾兵",
+    "role": "guard",
+    "file": "03/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "檳城・喬治市",
+    "name": "彩壁幻師",
+    "role": "boss",
+    "file": "03/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "馬六甲・紅屋廣場",
+    "name": "紅巷斥候",
+    "role": "scout",
+    "file": "04/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "馬六甲・紅屋廣場",
+    "name": "齒輪守衛",
+    "role": "guard",
+    "file": "04/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "馬六甲・紅屋廣場",
+    "name": "紅鐘城主",
+    "role": "boss",
+    "file": "04/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "怡保・舊街場",
+    "name": "白咖啡跑手",
+    "role": "scout",
+    "file": "05/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "怡保・舊街場",
+    "name": "銅壺鐵衛",
+    "role": "guard",
+    "file": "05/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "怡保・舊街場",
+    "name": "蒸汽掌櫃",
+    "role": "boss",
+    "file": "05/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "亞庇・海濱",
+    "name": "夕港信使",
+    "role": "scout",
+    "file": "06/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "亞庇・海濱",
+    "name": "浮標重衛",
+    "role": "guard",
+    "file": "06/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "亞庇・海濱",
+    "name": "落日船主",
+    "role": "boss",
+    "file": "06/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  }
+]

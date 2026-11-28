@@ -20,10 +20,37 @@ class SpriteBank {
     this.loadRaw("bg_lab_f1", "assets/bg_lab_f1.jpg");
     this.loadRaw("bg_lab_b1", "assets/bg_lab_b1.jpg");
     this.loadRaw("bg_lab_b2", "assets/bg_lab_b2.jpg");
-    this.loadTallScrollableWorldMap("assets/map_world_top.jpg?v=10", "assets/map_island.jpg?v=10");
+    this.loadTallScrollableWorldMap(
+      "assets/map_world_top.jpg?v=10",
+      "assets/map_island.jpg?v=10",
+      "assets/map_japan_island.jpg?v=58",
+      "assets/map_sea_islands.jpg?v=59"
+    );
+    this.loadRaw("map_taiwan_full", "assets/map_taiwan_full.jpg?v=51");
+    this.loadRaw("map_japan_full", "assets/map_japan_full.jpg?v=51");
 
     this.loadSprite("hero_mustache_normal", "assets/hero_mustache_normal.jpg");
     this.loadSprite("hero_mustache_buff", "assets/hero_mustache_buff.jpg");
+    this.loadRaw("hero_mustache_portrait", "assets/hero_mustache_portrait.jpg?v=48");
+    this.loadRaven2x4Sheet(
+      "assets/hero_mustache_normal_sheet.png?v=48",
+      ["must_idle", "must_atk1", "must_atk2", "must_atk3"],
+      ["must_k_crouch", "must_k_jump", "must_k_slam", "must_k_ring"],
+      [[0, 0.24], [0.24, 0.49], [0.49, 0.74], [0.74, 1.0]],
+      [[0, 0.24], [0.24, 0.48], [0.48, 0.72], [0.72, 1.0]]
+    );
+    this.loadRaven2x4Sheet(
+      "assets/hero_mustache_ult_sheet.png?v=48",
+      ["must_ult_prep", "must_ult_reload", "must_ult_buff1", "must_ult_buff2"],
+      ["must_ult_punch1", "must_ult_lv1", "must_ult_lv2_charge", "must_ult_lv3"],
+      [[0, 0.24], [0.24, 0.48], [0.48, 0.74], [0.74, 1.0]],
+      [[0, 0.21], [0.21, 0.48], [0.48, 0.69], [0.69, 1.0]]
+    );
+    this.loadWhite1x4Sheet(
+      "assets/hero_mustache_buff_k_sheet.png?v=48",
+      ["must_bk_crouch", "must_bk_jump", "must_bk_slam", "must_bk_ring"],
+      [[0, 0.24], [0.24, 0.46], [0.46, 0.72], [0.72, 1.0]]
+    );
     this.loadSprite("hero_samurai_idle", "assets/hero_samurai_idle.jpg");
     this.loadSprite("hero_samurai_slash", "assets/hero_samurai_slash.jpg");
     this.loadDualSamuraiSheet("assets/hero_samurai_dual_sheet.jpg?v=11");
@@ -131,6 +158,142 @@ class SpriteBank {
       [[0, 0.24], [0.24, 0.49], [0.49, 0.75], [0.75, 1.0]],
       [[0, 0.24], [0.24, 0.49], [0.49, 0.73], [0.73, 1.0]]
     );
+    this.loadRaw("hero_magic_portrait", "assets/hero_magic_portrait.jpg?v=41");
+    this.loadRaven2x4Sheet(
+      "assets/hero_magic_normal_sheet.png?v=41",
+      ["magic_idle", "magic_atk1", "magic_atk2", "magic_atk3"],
+      ["magic_k_cast", "magic_k_step", "magic_k_pull", "magic_k_burst"],
+      [[0, 0.23], [0.23, 0.50], [0.50, 0.74], [0.74, 1.0]],
+      [[0, 0.20], [0.20, 0.46], [0.46, 0.73], [0.73, 1.0]]
+    );
+    this.loadBlackBg2x4Sheet(
+      "assets/hero_magic_ult_sheet.jpg?v=41",
+      ["magic_ult_rift", "magic_ult_idle", "magic_ult_skulls", "magic_ult_lv1"],
+      ["magic_ult_lv2_pillars", "magic_ult_lv2_vortex", "magic_ult_lv3_empress", "magic_ult_lv3_beam"],
+      [[0, 0.23], [0.23, 0.49], [0.49, 0.74], [0.74, 1.0]],
+      [[0, 0.24], [0.24, 0.50], [0.50, 0.73], [0.73, 1.0]]
+    );
+    this.loadRaw("hero_ling_portrait", "assets/hero_ling_portrait.jpg?v=46");
+    this.loadBlackBg2x4Sheet(
+      "assets/hero_ling_normal_sheet.jpg?v=46",
+      ["ling_idle", "ling_atk1", "ling_atk2", "ling_atk3"],
+      ["ling_k_cast", "ling_k_shield", "ling_k_push", "ling_k_land"],
+      [[0, 0.22], [0.22, 0.48], [0.48, 0.74], [0.74, 1.0]],
+      [[0, 0.22], [0.22, 0.47], [0.47, 0.75], [0.75, 1.0]]
+    );
+    this.loadBlackBg2x4Sheet(
+      "assets/hero_ling_ult_sheet.jpg?v=46",
+      ["ling_ult_start", "ling_ult_idle", "ling_ult_combo", "ling_ult_lv1"],
+      ["ling_ult_lv2_fire", "ling_ult_lv2_water", "ling_ult_lv3_charge", "ling_ult_lv3_finisher"],
+      [[0, 0.24], [0.24, 0.49], [0.49, 0.75], [0.75, 1.0]],
+      [[0, 0.25], [0.25, 0.50], [0.50, 0.75], [0.75, 1.0]]
+    );
+    this.loadRaw("hero_rose_portrait", "assets/hero_rose_portrait.jpg?v=54");
+    this.loadRaven2x4Sheet(
+      "assets/hero_rose_normal_sheet.png?v=54",
+      ["rose_idle", "rose_atk1", "rose_atk2", "rose_atk3"],
+      ["rose_k_cast", "rose_k_wave", "rose_k_control", "rose_k_smirk"],
+      [[0, 0.22], [0.22, 0.49], [0.49, 0.72], [0.72, 1.0]],
+      [[0, 0.22], [0.22, 0.50], [0.50, 0.76], [0.76, 1.0]]
+    );
+    this.loadRaven2x4Sheet(
+      "assets/hero_rose_ult_sheet.png?v=54",
+      ["rose_ult_mass", "rose_ult_idle", "rose_ult_lv1_flurry", "rose_ult_lv1_beam"],
+      ["rose_ult_lv2_charge", "rose_ult_lv2_ring", "rose_ult_lv3_charge", "rose_ult_lv3_finisher"],
+      [[0, 0.26], [0.26, 0.49], [0.49, 0.74], [0.74, 1.0]],
+      [[0, 0.19], [0.19, 0.46], [0.46, 0.69], [0.69, 1.0]]
+    );
+    this.loadRaw("hero_fallen_portrait", "assets/hero_fallen_portrait.jpg?v=62");
+    this.loadBlackBg2x4Sheet(
+      "assets/hero_fallen_normal_sheet.jpg?v=62",
+      ["fallen_idle", "fallen_atk1", "fallen_atk2", "fallen_atk3"],
+      ["fallen_k_rise", "fallen_k_slash", "fallen_k_pillar", "fallen_k_land"],
+      [[0, 0.23], [0.23, 0.49], [0.49, 0.74], [0.74, 1.0]],
+      [[0, 0.24], [0.24, 0.50], [0.50, 0.75], [0.75, 1.0]]
+    );
+    this.loadBlackBg2x4Sheet(
+      "assets/hero_fallen_ult_sheet.jpg?v=62",
+      ["fallen_ult_awake", "fallen_ult_idle", "fallen_ult_lv1_slash", "fallen_ult_lv1_wave"],
+      ["fallen_ult_lv2_charge", "fallen_ult_lv2_slam", "fallen_ult_lv3_charge", "fallen_ult_lv3_finisher"],
+      [[0, 0.25], [0.25, 0.49], [0.49, 0.74], [0.74, 1.0]],
+      [[0, 0.24], [0.24, 0.50], [0.50, 0.75], [0.75, 1.0]]
+    );
+    this.loadBlackBg1x4Vfx("assets/vfx_fallen_skull_drop.jpg?v=62", [
+      "vfx_fallen_sigil",
+      "vfx_fallen_skull",
+      "vfx_fallen_pillar",
+      "vfx_fallen_burst",
+    ]);
+    this.loadBlackBg1x4Vfx("assets/vfx_shaka_palm_drop.jpg?v=63", [
+      "vfx_shaka_sigil",
+      "vfx_shaka_strike",
+      "vfx_shaka_pillar",
+      "vfx_shaka_burst",
+    ]);
+    this.loadBlackBg1x4Vfx("assets/vfx_magic_abyss_claw.jpg?v=63", [
+      "vfx_magic_sigil",
+      "vfx_magic_strike",
+      "vfx_magic_pillar",
+      "vfx_magic_burst",
+    ]);
+    this.loadBlackBg1x4Vfx("assets/vfx_rose_inferno_pillar.jpg?v=63", [
+      "vfx_rose_sigil",
+      "vfx_rose_strike",
+      "vfx_rose_pillar",
+      "vfx_rose_burst",
+    ]);
+    this.loadBlackBg1x4Vfx("assets/vfx_ling_four_beasts.jpg?v=63", [
+      "vfx_ling_sigil",
+      "vfx_ling_strike",
+      "vfx_ling_pillar",
+      "vfx_ling_burst",
+    ]);
+    this.loadBlackBg1x4Vfx("assets/vfx_flying_slash.jpg?v=66", [
+      "vfx_slash_cyan",
+      "vfx_slash_purple",
+      "vfx_slash_fire",
+      "vfx_slash_gold",
+    ]);
+    this.buildRoseFireFistSprites();
+    this.loadWhite1x4Sheet(
+      "assets/vfx_rose_firefist.png?v=69",
+      ["vfx_firefist_lv1", "vfx_firefist_lv2", "vfx_firefist_lv3"],
+      [
+        [0, 1 / 3],
+        [1 / 3, 2 / 3],
+        [2 / 3, 1],
+      ]
+    );
+    this.loadWhite1x4Sheet(
+      "assets/vfx_proj_pack_a.png?v=70",
+      ["vfx_proj_magic", "vfx_proj_raven", "vfx_proj_momo", "vfx_proj_nightheron"]
+    );
+    this.loadWhite1x4Sheet(
+      "assets/vfx_proj_pack_b.png?v=70",
+      ["vfx_proj_fallen", "vfx_proj_ling", "vfx_proj_ironfist", "vfx_proj_shaka"]
+    );
+    this.loadWhite1x4Sheet(
+      "assets/vfx_raven_ult_pack.png?v=71",
+      ["vfx_raven_bullet", "vfx_raven_shuriken", "vfx_raven_eclipse_x"],
+      [
+        [0, 1 / 3],
+        [1 / 3, 2 / 3],
+        [2 / 3, 1],
+      ]
+    );
+    this.loadWhite1x4Sheet(
+      "assets/vfx_proj_pack_c.png?v=71",
+      ["vfx_proj_alice", "vfx_momo_pepper", "vfx_momo_bats", "vfx_proj_mustache"]
+    );
+    this.loadWhite1x4Sheet(
+      "assets/vfx_mist_pack.png?v=73",
+      ["vfx_mist_pepper", "vfx_mist_blood", "vfx_mist_poison"],
+      [
+        [0, 1 / 3],
+        [1 / 3, 2 / 3],
+        [2 / 3, 1],
+      ]
+    );
     this.loadSprite("enemy_agent", "assets/enemy_agent.jpg");
     this.loadSprite("enemy_boss", "assets/enemy_boss.jpg");
     this.loadSprite("enemy_mutant_dog", "assets/enemy_mutant_dog.jpg");
@@ -145,6 +308,7 @@ class SpriteBank {
     this.loadSprite("enemy_89_bat", "assets/enemy_89_bat.jpg");
     this.loadSprite("boss_89_king", "assets/boss_89_king.jpg");
     this.loadSprite("prop_brisket", "assets/prop_brisket.jpg");
+    this.loadWhite1x4Sheet("assets/prop_smoker.png?v=57", ["prop_smoker"], [[0, 1]]);
 
     this.loadPixelButtonSheet("momo", "assets/momo_buttons_sheet.jpg?v=3");
     this.loadSinglePixelButton("samurai", "ult", "assets/samurai_btn_ult.jpg?v=30");
@@ -158,6 +322,23 @@ class SpriteBank {
     this.loadPixelButtonSheet("alice", "assets/alice_buttons_sheet.jpg?v=28");
     this.loadPixelButtonSheet("ironfist", "assets/ironfist_buttons_sheet.jpg?v=32");
     this.loadPixelButtonSheet("nightheron", "assets/nightheron_buttons_sheet.jpg?v=33");
+    this.loadPixelButtonSheet("magic", "assets/magic_buttons_sheet.jpg?v=41");
+    this.loadPixelButtonSheet("ling", "assets/ling_buttons_sheet.jpg?v=46");
+    this.loadPixelButtonSheet("rose", "assets/rose_buttons_sheet.jpg?v=54");
+    this.loadPixelButtonSheet("fallen", "assets/fallen_buttons_sheet.jpg?v=62");
+    this.load3x3AuraSheet("assets/ult_auras_3x3.jpg?v=43", [
+      "aura_mustache", "aura_samurai", "aura_momo",
+      "aura_raven", "aura_shaka", "aura_alice",
+      "aura_ironfist", "aura_nightheron", "aura_magic",
+    ]);
+    this.loadSingleAura("aura_ling", "assets/aura_ling.jpg?v=47");
+    this.loadSingleAura("aura_rose", "assets/aura_rose.jpg?v=54");
+    this.loadSingleAura("aura_fallen", "assets/aura_fallen.jpg?v=62");
+
+    // 12 Full-Screen Bespoke AAA Character Select Artworks
+    for (const cid of ["mustache", "samurai", "momo", "raven", "shaka", "alice", "ironfist", "nightheron", "magic", "ling", "rose", "fallen"]) {
+      this.loadRaw(`select_${cid}`, `assets/select_${cid}.jpg?v=65`);
+    }
   }
 
   // Slice & pixelate a 2x2 character skill button sheet (TR=ult, BL=jump, BR=atk) into crisp 32-bit pixel art!
@@ -171,7 +352,40 @@ class SpriteBank {
         { id: "jump", sx: 0, sy: halfH, sw: halfW, sh: halfH },
         { id: "atk", sx: halfW, sy: halfH, sw: halfW, sh: halfH },
       ];
+      const full = document.createElement("canvas");
+      full.width = img.width;
+      full.height = img.height;
+      const fctx = full.getContext("2d", { willReadFrequently: true });
+      fctx.drawImage(img, 0, 0);
+      const fd = fctx.getImageData(0, 0, img.width, img.height).data;
       for (const s of slices) {
+        // Auto-detect the exact circular icon bounding box inside this quadrant (eliminates black margins & off-center rims!)
+        const x0 = Math.floor(s.sx), y0 = Math.floor(s.sy);
+        const x1 = Math.min(img.width, Math.ceil(s.sx + s.sw));
+        const y1 = Math.min(img.height, Math.ceil(s.sy + s.sh));
+        let minX = x1, maxX = x0, minY = y1, maxY = y0;
+        for (let y = y0; y < y1; y += 2) {
+          for (let x = x0; x < x1; x += 2) {
+            const idx = (y * img.width + x) * 4;
+            if (fd[idx] + fd[idx + 1] + fd[idx + 2] > 36) {
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+        let cropX = s.sx, cropY = s.sy, cropW = s.sw, cropH = s.sh;
+        if (maxX - minX > s.sw * 0.45 && maxY - minY > s.sh * 0.45) {
+          const side = Math.max(maxX - minX, maxY - minY);
+          const midX = (minX + maxX) * 0.5;
+          const midY = (minY + maxY) * 0.5;
+          cropX = Math.max(0, midX - side * 0.5);
+          cropY = Math.max(0, midY - side * 0.5);
+          cropW = Math.min(img.width - cropX, side);
+          cropH = Math.min(img.height - cropY, side);
+        }
+
         const pSize = 52;
         const small = document.createElement("canvas");
         small.width = pSize;
@@ -179,7 +393,7 @@ class SpriteBank {
         const sctx = small.getContext("2d", { willReadFrequently: true });
         sctx.imageSmoothingEnabled = true;
         sctx.imageSmoothingQuality = "high";
-        sctx.drawImage(img, s.sx, s.sy, s.sw, s.sh, 0, 0, pSize, pSize);
+        sctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, pSize, pSize);
 
         const idata = sctx.getImageData(0, 0, pSize, pSize);
         const d = idata.data;
@@ -429,6 +643,552 @@ class SpriteBank {
     img.src = src;
   }
 
+  // Synthesize crisp 32-bit pixel-art 3-tier Flying Blazing Fire Fist sprites for Rose (Lv.1 / Lv.2 / Lv.3)!
+  buildRoseFireFistSprites() {
+    const makeFist = (tier) => {
+      const pw = tier === 3 ? 92 : tier === 2 ? 78 : 66;
+      const ph = tier === 3 ? 62 : tier === 2 ? 52 : 44;
+      const c = document.createElement("canvas");
+      c.width = pw;
+      c.height = ph;
+      const g = c.getContext("2d");
+      g.imageSmoothingEnabled = false;
+      const cy = Math.floor(ph / 2);
+
+      // 1. Blazing trailing comet flames (shooting right -> tail to left)
+      const tailLen = Math.floor(pw * 0.62);
+      const fistX = Math.floor(pw * 0.64);
+      const outerGrad = g.createLinearGradient(2, cy, pw - 2, cy);
+      outerGrad.addColorStop(0, "rgba(185, 28, 28, 0)");
+      outerGrad.addColorStop(0.28, "rgba(220, 38, 38, 0.78)");
+      outerGrad.addColorStop(0.62, "#f97316");
+      outerGrad.addColorStop(0.88, "#fde047");
+      outerGrad.addColorStop(1, "#ffffff");
+
+      // Outer roaring flame silhouette
+      g.fillStyle = outerGrad;
+      g.beginPath();
+      g.moveTo(2, cy);
+      g.quadraticCurveTo(tailLen * 0.45, cy - ph * 0.46, fistX + 6, cy - ph * 0.34);
+      g.quadraticCurveTo(pw - 1, cy - ph * 0.16, pw - 2, cy);
+      g.quadraticCurveTo(pw - 1, cy + ph * 0.18, fistX + 6, cy + ph * 0.34);
+      g.quadraticCurveTo(tailLen * 0.45, cy + ph * 0.46, 2, cy);
+      g.closePath();
+      g.fill();
+
+      // Dynamic jagged flame tongues streaming backward
+      g.fillStyle = "#ea580c";
+      const tongues = [
+        [fistX - 6, cy - ph * 0.28, 10, cy - ph * 0.42, fistX - 18, cy - ph * 0.14],
+        [fistX - 8, cy + ph * 0.28, 12, cy + ph * 0.42, fistX - 18, cy + ph * 0.14],
+        [fistX - 16, cy - ph * 0.12, 4, cy - ph * 0.22, fistX - 24, cy],
+        [fistX - 16, cy + ph * 0.12, 4, cy + ph * 0.22, fistX - 24, cy],
+      ];
+      for (const [x1, y1, x2, y2, x3, y3] of tongues) {
+        g.beginPath();
+        g.moveTo(x1, y1);
+        g.lineTo(x2, y2);
+        g.lineTo(x3, y3);
+        g.closePath();
+        g.fill();
+      }
+
+      // 2. Sculpted Clenched Fiery Fist (back of hand + 4 knuckles + curled thumb facing RIGHT!)
+      const fw = Math.floor(pw * 0.34);
+      const fh = Math.floor(ph * 0.56);
+      const fx = fistX - Math.floor(fw * 0.32);
+      const fy = cy - Math.floor(fh / 2);
+
+      // Fiery orange-gold fist base body
+      const fistGrad = g.createLinearGradient(fx, fy, fx + fw, fy + fh);
+      fistGrad.addColorStop(0, "#fb923c");
+      fistGrad.addColorStop(0.55, "#fde047");
+      fistGrad.addColorStop(1, "#ffffff");
+      g.fillStyle = fistGrad;
+      g.fillRect(fx, fy + 2, fw - 3, fh - 4);
+
+      // 4 protruding punch knuckles on the leading right edge
+      const knH = Math.max(4, Math.floor((fh - 6) / 4));
+      for (let k = 0; k < 4; k++) {
+        const ky = fy + 2 + k * knH;
+        g.fillStyle = "#fef9c3";
+        g.fillRect(fx + fw - 7, ky + 1, 7, knH - 1);
+        // Dark ember knuckle crease for unmistakable fist readability!
+        g.fillStyle = "#9a3412";
+        g.fillRect(fx + fw - 9, ky, 7, 1);
+        g.fillRect(fx + fw - 10, ky + 1, 2, knH - 1);
+      }
+
+      // Curled thumb locked along bottom-front of fist
+      g.fillStyle = "#fde047";
+      g.fillRect(fx + 3, fy + fh - Math.floor(fh * 0.30), Math.floor(fw * 0.62), Math.floor(fh * 0.28));
+      g.fillStyle = "#9a3412";
+      g.fillRect(fx + 3, fy + fh - Math.floor(fh * 0.32), Math.floor(fw * 0.62), 2);
+
+      // Glowing incandescent white-hot leading edge highlight
+      g.fillStyle = "#ffffff";
+      g.fillRect(fx + fw - 3, fy + 4, 3, fh - 8);
+
+      // 3. Lv.2 / Lv.3 Hot-Pink Psychic Lightning & Vortex Arcs!
+      if (tier >= 2) {
+        g.strokeStyle = "#f472b6";
+        g.lineWidth = tier === 3 ? 2 : 1.5;
+        g.beginPath();
+        g.moveTo(8, cy - ph * 0.22);
+        g.lineTo(tailLen * 0.55, cy - ph * 0.36);
+        g.lineTo(fistX, cy - ph * 0.24);
+        g.moveTo(10, cy + ph * 0.22);
+        g.lineTo(tailLen * 0.55, cy + ph * 0.36);
+        g.lineTo(fistX, cy + ph * 0.24);
+        g.stroke();
+      }
+      if (tier >= 3) {
+        g.strokeStyle = "#fef08a";
+        g.lineWidth = 2;
+        g.beginPath();
+        g.ellipse(fistX + 2, cy, fw * 0.55, ph * 0.44, 0, -Math.PI * 0.55, Math.PI * 0.55);
+        g.stroke();
+      }
+      return c;
+    };
+
+    this.images["vfx_firefist_lv1"] = makeFist(1);
+    this.images["vfx_firefist_lv2"] = makeFist(2);
+    this.images["vfx_firefist_lv3"] = makeFist(3);
+  }
+
+  // Slice a 1x4 pure-black (#000000) VFX strip into 4 additive-ready trimmed sprites!
+  loadBlackBg1x4Vfx(src, names) {
+    this.totalCount++;
+    const img = new Image();
+    img.onload = () => {
+      const colW = img.width / names.length;
+      const ch = img.height;
+      for (let i = 0; i < names.length; i++) {
+        const sx = Math.floor(i * colW);
+        const sw = Math.floor(colW);
+        const off = document.createElement("canvas");
+        off.width = sw;
+        off.height = ch;
+        const octx = off.getContext("2d", { willReadFrequently: true });
+        octx.drawImage(img, sx, 0, sw, ch, 0, 0, sw, ch);
+        const id = octx.getImageData(0, 0, sw, ch);
+        const d = id.data;
+        let minX = sw, maxX = 0, minY = ch, maxY = 0;
+        for (let y = 0; y < ch; y++) {
+          for (let x = 0; x < sw; x++) {
+            const idx = (y * sw + x) * 4;
+            const maxC = Math.max(d[idx], d[idx + 1], d[idx + 2]);
+            if (maxC <= 14) {
+              d[idx + 3] = 0;
+            } else if (maxC < 62) {
+              d[idx + 3] = Math.round(((maxC - 14) / 48) * 255);
+            } else {
+              d[idx + 3] = 255;
+            }
+            if (d[idx + 3] > 28) {
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+        octx.putImageData(id, 0, 0);
+        if (maxX > minX && maxY > minY) {
+          const bw = maxX - minX + 1;
+          const bh = maxY - minY + 1;
+          const out = document.createElement("canvas");
+          out.width = bw;
+          out.height = bh;
+          out.getContext("2d").drawImage(off, minX, minY, bw, bh, 0, 0, bw, bh);
+          this.images[names[i]] = out;
+        }
+      }
+      this.readyCount++;
+    };
+    img.onerror = () => {
+      this.readyCount++;
+    };
+    img.src = src;
+  }
+
+
+  // Load a single 1:1 Pure-Black-Background Ultimate Magic Aura Ring into a centered transparent disc!
+  loadSingleAura(name, src) {
+    this.totalCount++;
+    const img = new Image();
+    img.onload = () => {
+      const cw = img.width;
+      const ch = img.height;
+      const off = document.createElement("canvas");
+      off.width = cw;
+      off.height = ch;
+      const octx = off.getContext("2d", { willReadFrequently: true });
+      octx.drawImage(img, 0, 0);
+      const id = octx.getImageData(0, 0, cw, ch);
+      const d = id.data;
+      let minX = cw, maxX = 0, minY = ch, maxY = 0;
+      for (let y = 0; y < ch; y++) {
+        for (let x = 0; x < cw; x++) {
+          const idx = (y * cw + x) * 4;
+          const maxC = Math.max(d[idx], d[idx + 1], d[idx + 2]);
+          if (maxC <= 14) {
+            d[idx + 3] = 0;
+          } else if (maxC < 64) {
+            d[idx + 3] = Math.round(((maxC - 14) / 50) * 255);
+          } else {
+            d[idx + 3] = 255;
+          }
+          if (d[idx + 3] > 28) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+      octx.putImageData(id, 0, 0);
+      if (maxX > minX && maxY > minY) {
+        const bw = maxX - minX + 1;
+        const bh = maxY - minY + 1;
+        const side = Math.max(bw, bh);
+        const out = document.createElement("canvas");
+        out.width = side;
+        out.height = side;
+        const dx = Math.floor((side - bw) / 2);
+        const dy = Math.floor((side - bh) / 2);
+        out.getContext("2d").drawImage(off, minX, minY, bw, bh, dx, dy, bw, bh);
+        this.images[name] = out;
+      }
+      this.readyCount++;
+    };
+    img.onerror = () => {
+      this.readyCount++;
+    };
+    img.src = src;
+  }
+
+
+
+  // Slice 3x3 Pure-Black-Background Ultimate Magic Aura Ring Sheet using automatic gap projection
+  // so uneven margins never clip tips or bleed adjacent rings!
+  load3x3AuraSheet(src, names) {
+    this.totalCount++;
+    const img = new Image();
+    img.onload = () => {
+      const w = img.width;
+      const h = img.height;
+      const full = document.createElement("canvas");
+      full.width = w;
+      full.height = h;
+      const fctx = full.getContext("2d", { willReadFrequently: true });
+      fctx.drawImage(img, 0, 0);
+      const fid = fctx.getImageData(0, 0, w, h);
+      const fd = fid.data;
+
+      // 1. Find 3 exact vertical row bands by finding black-gap valleys in row projection
+      const rowEnergy = new Int32Array(h);
+      for (let y = 0; y < h; y++) {
+        let cnt = 0;
+        for (let x = 0; x < w; x++) {
+          const idx = (y * w + x) * 4;
+          if (Math.max(fd[idx], fd[idx + 1], fd[idx + 2]) > 24) cnt++;
+        }
+        rowEnergy[y] = cnt;
+      }
+      const findBands = (energy, len, expected) => {
+        const bands = [];
+        let inBand = false, start = 0;
+        for (let i = 0; i < len; i++) {
+          if (energy[i] > 6 && !inBand) {
+            inBand = true;
+            start = i;
+          } else if (energy[i] <= 6 && inBand) {
+            if (i - start > 40) bands.push([start, i]);
+            inBand = false;
+          }
+        }
+        if (inBand && len - start > 40) bands.push([start, len]);
+        if (bands.length === expected) return bands;
+        // Fallback: split by local minima around 1/3 and 2/3 of active span
+        const first = energy.findIndex((v) => v > 6);
+        let last = len - 1;
+        while (last > first && energy[last] <= 6) last--;
+        const span = Math.max(1, last - first);
+        const minIn = (lo, hi) => {
+          let best = lo, bestV = Infinity;
+          for (let i = Math.max(0, lo); i <= Math.min(len - 1, hi); i++) {
+            if (energy[i] < bestV) { bestV = energy[i]; best = i; }
+          }
+          return best;
+        };
+        const s1 = minIn(Math.floor(first + span * 0.26), Math.floor(first + span * 0.40));
+        const s2 = minIn(Math.floor(first + span * 0.60), Math.floor(first + span * 0.74));
+        return [[Math.max(0, first - 2), s1], [s1, s2], [s2, Math.min(len, last + 2)]];
+      };
+
+      const rowBands = findBands(rowEnergy, h, 3);
+
+      for (let row = 0; row < 3; row++) {
+        const [ry0, ry1] = rowBands[row];
+        // 2. Find 3 exact horizontal column bands inside this row
+        const colEnergy = new Int32Array(w);
+        for (let x = 0; x < w; x++) {
+          let cnt = 0;
+          for (let y = ry0; y < ry1; y++) {
+            const idx = (y * w + x) * 4;
+            if (Math.max(fd[idx], fd[idx + 1], fd[idx + 2]) > 24) cnt++;
+          }
+          colEnergy[x] = cnt;
+        }
+        const colBands = findBands(colEnergy, w, 3);
+
+        for (let col = 0; col < 3; col++) {
+          const i = row * 3 + col;
+          if (i >= names.length) continue;
+          const [cx0, cx1] = colBands[col];
+          const cw = Math.max(1, cx1 - cx0);
+          const ch = Math.max(1, ry1 - ry0);
+          const off = document.createElement("canvas");
+          off.width = cw;
+          off.height = ch;
+          const octx = off.getContext("2d", { willReadFrequently: true });
+          octx.drawImage(img, cx0, ry0, cw, ch, 0, 0, cw, ch);
+          const id = octx.getImageData(0, 0, cw, ch);
+          const d = id.data;
+          let minX = cw, maxX = 0, minY = ch, maxY = 0;
+          for (let y = 0; y < ch; y++) {
+            for (let x = 0; x < cw; x++) {
+              const idx = (y * cw + x) * 4;
+              const maxC = Math.max(d[idx], d[idx + 1], d[idx + 2]);
+              if (maxC <= 14) {
+                d[idx + 3] = 0;
+              } else if (maxC < 64) {
+                d[idx + 3] = Math.round(((maxC - 14) / 50) * 255);
+              } else {
+                d[idx + 3] = 255;
+              }
+              if (d[idx + 3] > 28) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+              }
+            }
+          }
+          octx.putImageData(id, 0, 0);
+          if (maxX <= minX || maxY <= minY) continue;
+          const bw = maxX - minX + 1;
+          const bh = maxY - minY + 1;
+          const side = Math.max(bw, bh);
+          const out = document.createElement("canvas");
+          out.width = side;
+          out.height = side;
+          const dx = Math.floor((side - bw) / 2);
+          const dy = Math.floor((side - bh) / 2);
+          out.getContext("2d").drawImage(off, minX, minY, bw, bh, dx, dy, bw, bh);
+          this.images[names[i]] = out;
+        }
+      }
+      this.readyCount++;
+    };
+    img.onerror = () => {
+      this.readyCount++;
+    };
+    img.src = src;
+  }
+
+
+
+  // Slice & chroma-key 2x4 (8-frame) Pure-Black-Background Sprite Sheets (e.g. Magic Ultimate)!
+  loadBlackBg2x4Sheet(src, row0Names, row1Names, row0Ratios = null, row1Ratios = null) {
+    this.totalCount++;
+    const img = new Image();
+    img.onload = () => {
+      const w = img.width;
+      const h = img.height;
+      const halfH = Math.floor(h / 2);
+      const rows = [
+        { y0: 0, y1: halfH, names: row0Names, ratios: row0Ratios },
+        { y0: halfH, y1: h, names: row1Names, ratios: row1Ratios },
+      ];
+      for (const row of rows) {
+        for (let col = 0; col < 4; col++) {
+          const x0 = row.ratios ? Math.floor(w * row.ratios[col][0]) : Math.floor((w * col) / 4);
+          const x1 = row.ratios ? Math.floor(w * row.ratios[col][1]) : Math.floor((w * (col + 1)) / 4);
+          const cw = Math.max(1, x1 - x0);
+          const ch = Math.max(1, row.y1 - row.y0);
+          const off = document.createElement("canvas");
+          off.width = cw;
+          off.height = ch;
+          const octx = off.getContext("2d", { willReadFrequently: true });
+          octx.drawImage(img, x0, row.y0, cw, ch, 0, 0, cw, ch);
+          const id = octx.getImageData(0, 0, cw, ch);
+          const d = id.data;
+
+          const isBlackBg = (idx) => {
+            const r = d[idx], g = d[idx + 1], b = d[idx + 2];
+            return r <= 20 && g <= 20 && b <= 24;
+          };
+
+          const visited = new Uint8Array(cw * ch);
+          const q = new Int32Array(cw * ch);
+          let qh = 0, qt = 0;
+          const enq = (x, y) => {
+            if (x < 0 || y < 0 || x >= cw || y >= ch) return;
+            const p = y * cw + x;
+            if (visited[p]) return;
+            if (isBlackBg(p * 4)) {
+              visited[p] = 1;
+              d[p * 4 + 3] = 0;
+              q[qt++] = p;
+            }
+          };
+          for (let x = 0; x < cw; x++) { enq(x, 0); enq(x, ch - 1); }
+          for (let y = 0; y < ch; y++) { enq(0, y); enq(cw - 1, y); }
+          while (qh < qt) {
+            const p = q[qh++];
+            const x = p % cw, y = (p - x) / cw;
+            enq(x + 1, y); enq(x - 1, y); enq(x, y + 1); enq(x, y - 1);
+          }
+
+          // Clear enclosed pure-black pockets inside magic circles & rift frames
+          for (let p = 0; p < cw * ch; p++) {
+            if (!visited[p]) {
+              const idx = p * 4;
+              const r = d[idx], g = d[idx + 1], b = d[idx + 2];
+              if (r <= 12 && g <= 12 && b <= 15) {
+                d[idx + 3] = 0;
+              }
+            }
+          }
+
+          // Smooth dark-glow feathering on pixels bordering transparency
+          for (let y = 1; y < ch - 1; y++) {
+            for (let x = 1; x < cw - 1; x++) {
+              const p = y * cw + x;
+              const idx = p * 4;
+              if (d[idx + 3] === 0) continue;
+              const touchesBg =
+                d[((y - 1) * cw + x) * 4 + 3] === 0 ||
+                d[((y + 1) * cw + x) * 4 + 3] === 0 ||
+                d[(y * cw + (x - 1)) * 4 + 3] === 0 ||
+                d[(y * cw + (x + 1)) * 4 + 3] === 0;
+              if (touchesBg) {
+                const maxC = Math.max(d[idx], d[idx + 1], d[idx + 2]);
+                if (maxC < 48) {
+                  d[idx + 3] = Math.round((maxC / 48) * 210);
+                }
+              }
+            }
+          }
+          octx.putImageData(id, 0, 0);
+
+          let minX = cw, maxX = 0, minY = ch, maxY = 0;
+          for (let y = 0; y < ch; y++) {
+            for (let x = 0; x < cw; x++) {
+              if (d[(y * cw + x) * 4 + 3] > 28) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+              }
+            }
+          }
+          if (maxX <= minX || maxY <= minY) continue;
+          const tw = maxX - minX + 1;
+          const th = maxY - minY + 1;
+          const out = document.createElement("canvas");
+          out.width = tw;
+          out.height = th;
+          out.getContext("2d").drawImage(off, minX, minY, tw, th, 0, 0, tw, th);
+          this.images[row.names[col]] = out;
+        }
+      }
+      this.readyCount++;
+    };
+    img.onerror = () => {
+      this.readyCount++;
+    };
+    img.src = src;
+  }
+
+
+
+  // Slice & chroma-key a 1x4 White/Transparent Sprite Strip (e.g. Mustache Hero Buff Small Skill K)!
+  loadWhite1x4Sheet(src, names, ratios = null) {
+    this.totalCount++;
+    const img = new Image();
+    img.onload = () => {
+      const w = img.width;
+      const h = img.height;
+      const off = document.createElement("canvas");
+      off.width = w;
+      off.height = h;
+      const octx = off.getContext("2d", { willReadFrequently: true });
+      octx.drawImage(img, 0, 0);
+      const id = octx.getImageData(0, 0, w, h);
+      const d = id.data;
+      const isWhiteBg = (idx) => {
+        if (d[idx + 3] < 20) return true;
+        const r = d[idx], g = d[idx + 1], b = d[idx + 2];
+        return r > 236 && g > 236 && b > 236 && Math.max(r, g, b) - Math.min(r, g, b) < 16;
+      };
+      const visited = new Uint8Array(w * h);
+      const q = new Int32Array(w * h);
+      let qh = 0, qt = 0;
+      const enq = (x, y) => {
+        if (x < 0 || y < 0 || x >= w || y >= h) return;
+        const p = y * w + x;
+        if (visited[p]) return;
+        if (isWhiteBg(p * 4)) {
+          visited[p] = 1;
+          d[p * 4 + 3] = 0;
+          q[qt++] = p;
+        }
+      };
+      for (let x = 0; x < w; x++) { enq(x, 0); enq(x, h - 1); }
+      for (let y = 0; y < h; y++) { enq(0, y); enq(w - 1, y); }
+      while (qh < qt) {
+        const p = q[qh++];
+        const x = p % w, y = (p - x) / w;
+        enq(x + 1, y); enq(x - 1, y); enq(x, y + 1); enq(x, y - 1);
+      }
+      octx.putImageData(id, 0, 0);
+      for (let col = 0; col < names.length; col++) {
+        const x0 = ratios ? Math.floor(w * ratios[col][0]) : Math.floor((w * col) / 4);
+        const x1 = ratios ? Math.floor(w * ratios[col][1]) : Math.floor((w * (col + 1)) / 4);
+        let minX = x1, maxX = x0, minY = h, maxY = 0;
+        for (let y = 0; y < h; y++) {
+          for (let x = x0; x < x1; x++) {
+            if (d[(y * w + x) * 4 + 3] > 24) {
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+        if (maxX <= minX || maxY <= minY) continue;
+        const tw = maxX - minX + 1;
+        const th = maxY - minY + 1;
+        const out = document.createElement("canvas");
+        out.width = tw;
+        out.height = th;
+        out.getContext("2d").drawImage(off, minX, minY, tw, th, 0, 0, tw, th);
+        this.images[names[col]] = out;
+      }
+      this.readyCount++;
+    };
+    img.onerror = () => {
+      this.readyCount++;
+    };
+    img.src = src;
+  }
+
+
+
   // Slice & chroma-key 2x4 (8-frame) White-Background Sprite Sheets (Raven / Momo)!
   loadRaven2x4Sheet(src, row0Names, row1Names, row0Ratios = null, row1Ratios = null) {
     this.totalCount++;
@@ -564,6 +1324,8 @@ class SpriteBank {
     };
     img.src = src;
   }
+
+
 
   // Extract Raven (暗影會・暗殺者) sprites, portrait & custom skill buttons directly from her character sheet!
   loadRavenSheet(src) {
@@ -706,6 +1468,8 @@ class SpriteBank {
     img.src = src;
   }
 
+
+
   // Slice & chroma-key the 3-frame Dual-Katana Samurai sheet (Idle, Forward Dash, X-Cross Slash!)
   loadDualSamuraiSheet(src) {
     this.totalCount++;
@@ -843,22 +1607,25 @@ class SpriteBank {
     img.src = src;
   }
 
-  // Build a Tall Scrollable World Map (1376x1480):
-  // Top half (0..768) = 100% untouched original 2-island map (Island 1 Left, Bio-Island Right)
-  // Bottom half (768..1480) = Seamless ocean continuation + HUGE clean Taiwan Island below Island 1!
-  loadTallScrollableWorldMap(topSrc, taiwanSrc) {
+  // Build a 3-Tier Tall Scrollable World Map (1376x2200):
+  // Row 1 (0..768)    = Island 1 (Left) + Bio-Island (Right)
+  // Row 2 (768..1480) = Taiwan Island (Left) + Pixel-Art Japan Archipelago (Right)
+  // Row 3 (1480..2200)= Pixel-Art Southeast Asia 4-Country Archipelago (Thailand, Vietnam, Malaysia, Singapore)!
+  loadTallScrollableWorldMap(topSrc, taiwanSrc, japanSrc, seaSrc) {
     this.totalCount++;
     const topImg = new Image();
     const twImg = new Image();
+    const jpImg = new Image();
+    const seaImg = new Image();
     let loaded = 0;
 
-    const onBothLoaded = () => {
+    const onAllLoaded = () => {
       loaded++;
-      if (loaded < 2) return;
+      if (loaded < 4) return;
 
       const W = 1376;
       const topH = 768;
-      const H = 1480;
+      const H = 2200;
 
       // Sample exact bottom-edge ocean color of topImg for a 100% invisible transition!
       const tmp = document.createElement("canvas");
@@ -881,9 +1648,9 @@ class SpriteBank {
       // 2. Top half: 100% untouched original 2-island World Map!
       ctx.drawImage(topImg, 0, 0, W, topH);
 
-      // Scatter matching pixel wave crests across the southern ocean below y = 768
+      // Scatter matching pixel wave crests across the southern oceans below y = 768
       ctx.fillStyle = "rgba(186, 230, 253, 0.58)";
-      for (let i = 0; i < 85; i++) {
+      for (let i = 0; i < 165; i++) {
         const wx = ((i * 211 + 37) % (W - 40)) + 20;
         const wy = topH + 18 + ((i * 97 + 29) % (H - topH - 40));
         ctx.fillRect(wx, wy, 10, 3);
@@ -940,14 +1707,104 @@ class SpriteBank {
       ctx.drawImage(buf, -185, -280, 370, 560);
       ctx.restore();
 
+      // 4. Composite high-detail 32-bit SNES Pixel-Art Japan Archipelago (BFS ocean removal preserves turquoise shallows & surf foam!)
+      const jw = jpImg.width;
+      const jh = jpImg.height;
+      const jbuf = document.createElement("canvas");
+      jbuf.width = jw;
+      jbuf.height = jh;
+      const jctx = jbuf.getContext("2d", { willReadFrequently: true });
+      jctx.drawImage(jpImg, 0, 0);
+      const jid = jctx.getImageData(0, 0, jw, jh);
+      const jd = jid.data;
+      const jOcR = jd[4 * 4], jOcG = jd[4 * 4 + 1], jOcB = jd[4 * 4 + 2];
+      const isJpOcean = (idx) => {
+        if (jd[idx + 3] === 0) return true;
+        const r = jd[idx], g = jd[idx + 1], b = jd[idx + 2];
+        return Math.abs(r - jOcR) + Math.abs(g - jOcG) + Math.abs(b - jOcB) < 54;
+      };
+      const jvis = new Uint8Array(jw * jh);
+      const jq = new Int32Array(jw * jh);
+      let jqh = 0, jqt = 0;
+      const jenq = (x, y) => {
+        if (x < 0 || y < 0 || x >= jw || y >= jh) return;
+        const p = y * jw + x;
+        if (jvis[p]) return;
+        if (isJpOcean(p * 4)) {
+          jvis[p] = 1;
+          jd[p * 4 + 3] = 0;
+          jq[jqt++] = p;
+        }
+      };
+      for (let x = 0; x < jw; x++) { jenq(x, 0); jenq(x, jh - 1); }
+      for (let y = 0; y < jh; y++) { jenq(0, y); jenq(jw - 1, y); }
+      while (jqh < jqt) {
+        const p = jq[jqh++];
+        const x = p % jw, y = (p - x) / jw;
+        jenq(x + 1, y); jenq(x - 1, y); jenq(x, y + 1); jenq(x, y - 1);
+      }
+      jctx.putImageData(jid, 0, 0);
+
+      ctx.save();
+      ctx.translate(1015, 1085);
+      ctx.drawImage(jbuf, -320, -320, 640, 640);
+      ctx.restore();
+
+      // 5. Composite high-detail 32-bit SNES Pixel-Art Southeast Asia 4-Country Archipelago in Row 3 (y = 1480..2200)!
+      const sw3 = seaImg.width;
+      const sh3 = seaImg.height;
+      const sbuf = document.createElement("canvas");
+      sbuf.width = sw3;
+      sbuf.height = sh3;
+      const sctx = sbuf.getContext("2d", { willReadFrequently: true });
+      sctx.drawImage(seaImg, 0, 0);
+      const sid = sctx.getImageData(0, 0, sw3, sh3);
+      const sd = sid.data;
+      const sOcR = sd[4 * 4], sOcG = sd[4 * 4 + 1], sOcB = sd[4 * 4 + 2];
+      const isSeaOcean = (idx) => {
+        if (sd[idx + 3] === 0) return true;
+        const r = sd[idx], g = sd[idx + 1], b = sd[idx + 2];
+        return Math.abs(r - sOcR) + Math.abs(g - sOcG) + Math.abs(b - sOcB) < 54;
+      };
+      const svis = new Uint8Array(sw3 * sh3);
+      const sq = new Int32Array(sw3 * sh3);
+      let sqh = 0, sqt = 0;
+      const senq = (x, y) => {
+        if (x < 0 || y < 0 || x >= sw3 || y >= sh3) return;
+        const p = y * sw3 + x;
+        if (svis[p]) return;
+        if (isSeaOcean(p * 4)) {
+          svis[p] = 1;
+          sd[p * 4 + 3] = 0;
+          sq[sqt++] = p;
+        }
+      };
+      for (let x = 0; x < sw3; x++) { senq(x, 0); senq(x, sh3 - 1); }
+      for (let y = 0; y < sh3; y++) { senq(0, y); senq(sw3 - 1, y); }
+      while (sqh < sqt) {
+        const p = sq[sqh++];
+        const x = p % sw3, y = (p - x) / sw3;
+        senq(x + 1, y); senq(x - 1, y); senq(x, y + 1); senq(x, y - 1);
+      }
+      sctx.putImageData(sid, 0, 0);
+
+      ctx.save();
+      ctx.translate(688, 1835);
+      ctx.drawImage(sbuf, -620, -348, 1240, 696);
+      ctx.restore();
+
       this.images["map_island"] = out;
       this.readyCount++;
     };
 
-    topImg.onload = onBothLoaded;
-    twImg.onload = onBothLoaded;
+    topImg.onload = onAllLoaded;
+    twImg.onload = onAllLoaded;
+    jpImg.onload = onAllLoaded;
+    seaImg.onload = onAllLoaded;
     topImg.src = topSrc;
     twImg.src = taiwanSrc;
+    jpImg.src = japanSrc;
+    seaImg.src = seaSrc;
   }
 
   loadSprite(name, src) {

@@ -1,0 +1,218 @@
+[
+  {
+    "stage": "01",
+    "area": "濱海灣",
+    "name": "銀灣快手",
+    "role": "scout",
+    "file": "01/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "01",
+    "area": "濱海灣",
+    "name": "白瓣鐵衛",
+    "role": "guard",
+    "file": "01/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "01",
+    "area": "濱海灣",
+    "name": "天際塔王",
+    "role": "boss",
+    "file": "01/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "濱海灣花園",
+    "name": "藤影斥候",
+    "role": "scout",
+    "file": "02/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "濱海灣花園",
+    "name": "溫室重衛",
+    "role": "guard",
+    "file": "02/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "濱海灣花園",
+    "name": "紫冠樹王",
+    "role": "boss",
+    "file": "02/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "牛車水",
+    "name": "赤巷跑手",
+    "role": "scout",
+    "file": "03/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "牛車水",
+    "name": "竹箱力士",
+    "role": "guard",
+    "file": "03/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "牛車水",
+    "name": "紅燈掌櫃",
+    "role": "boss",
+    "file": "03/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "小印度",
+    "name": "花街信使",
+    "role": "scout",
+    "file": "04/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "小印度",
+    "name": "黃銅重兵",
+    "role": "guard",
+    "file": "04/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "小印度",
+    "name": "彩窗機王",
+    "role": "boss",
+    "file": "04/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "克拉碼頭",
+    "name": "河畔斥候",
+    "role": "scout",
+    "file": "05/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "克拉碼頭",
+    "name": "木桶壯漢",
+    "role": "guard",
+    "file": "05/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "克拉碼頭",
+    "name": "暮河船長",
+    "role": "boss",
+    "file": "05/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "樟宜・星耀樟宜",
+    "name": "航廊快手",
+    "role": "scout",
+    "file": "06/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "樟宜・星耀樟宜",
+    "name": "行李鐵衛",
+    "role": "guard",
+    "file": "06/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "樟宜・星耀樟宜",
+    "name": "雨漩司令",
+    "role": "boss",
+    "file": "06/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  }
+]

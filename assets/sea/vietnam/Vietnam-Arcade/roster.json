@@ -1,0 +1,218 @@
+[
+  {
+    "stage": "01",
+    "area": "河內・還劍湖",
+    "name": "赤橋信使",
+    "role": "scout",
+    "file": "01/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "01",
+    "area": "河內・還劍湖",
+    "name": "翠漆盾衛",
+    "role": "guard",
+    "file": "01/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "01",
+    "area": "河內・還劍湖",
+    "name": "赤橋鎮守",
+    "role": "boss",
+    "file": "01/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "河內・老城區",
+    "name": "巷口快手",
+    "role": "scout",
+    "file": "02/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "河內・老城區",
+    "name": "棚架鐵衛",
+    "role": "guard",
+    "file": "02/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "02",
+    "area": "河內・老城區",
+    "name": "百窗掌櫃",
+    "role": "boss",
+    "file": "02/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "順化・皇城",
+    "name": "紫旗斥候",
+    "role": "scout",
+    "file": "03/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "順化・皇城",
+    "name": "朱漆門衛",
+    "role": "guard",
+    "file": "03/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "03",
+    "area": "順化・皇城",
+    "name": "金瓦城將",
+    "role": "boss",
+    "file": "03/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "會安・古城",
+    "name": "提燈快手",
+    "role": "scout",
+    "file": "04/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "會安・古城",
+    "name": "靛染力士",
+    "role": "guard",
+    "file": "04/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "04",
+    "area": "會安・古城",
+    "name": "千燈偶師",
+    "role": "boss",
+    "file": "04/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "峴港・龍橋",
+    "name": "藍光巡手",
+    "role": "scout",
+    "file": "05/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "峴港・龍橋",
+    "name": "鉚釘重兵",
+    "role": "guard",
+    "file": "05/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "05",
+    "area": "峴港・龍橋",
+    "name": "金龍橋王",
+    "role": "boss",
+    "file": "05/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "胡志明市・濱城市場",
+    "name": "街市探子",
+    "role": "scout",
+    "file": "06/scout.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "胡志明市・濱城市場",
+    "name": "木箱扛夫",
+    "role": "guard",
+    "file": "06/guard.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  },
+  {
+    "stage": "06",
+    "area": "胡志明市・濱城市場",
+    "name": "鐘樓商主",
+    "role": "boss",
+    "file": "06/boss.png",
+    "anchor": [
+      64,
+      122
+    ],
+    "pose": "idle"
+  }
+]

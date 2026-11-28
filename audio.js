@@ -6,18 +6,27 @@ class SoundEngine {
     this.bgmEnabled = true;
     this.bgmAudio = null;
     this._isBuff = false;
+    this._isBoss = false;
   }
 
   get isBuff() {
     return this._isBuff;
   }
 
+  _syncBgmDynamics() {
+    if (!this.bgmAudio) return;
+    this.bgmAudio.volume = this._isBuff ? 0.56 : this._isBoss ? 0.50 : 0.42;
+    this.bgmAudio.playbackRate = this._isBuff ? 1.08 : this._isBoss ? 1.06 : 1.0;
+  }
+
   set isBuff(val) {
     this._isBuff = !!val;
-    if (this.bgmAudio) {
-      this.bgmAudio.volume = this._isBuff ? 0.56 : 0.42;
-      this.bgmAudio.playbackRate = this._isBuff ? 1.05 : 1.0;
-    }
+    this._syncBgmDynamics();
+  }
+
+  setBossTension(active) {
+    this._isBoss = !!active;
+    this._syncBgmDynamics();
   }
 
   init() {
@@ -426,6 +435,37 @@ class SoundEngine {
     this.playTone(1960, 0.06, "triangle", 0.18, 880, 0);
     this.playNoise(0.28, 0.24, 1200, 0.07);
     this.playTone(130.8, 0.42, "sawtooth", 0.2, 42, 0.07);
+  }
+
+  // Arcade Boss Warning Siren
+  bossWarning() {
+    this.playTone(580, 0.22, "sawtooth", 0.16, 420, 0);
+    this.playTone(580, 0.22, "sawtooth", 0.16, 420, 0.28);
+    this.playTone(720, 0.28, "square", 0.14, 340, 0.56);
+    this.playNoise(0.18, 0.12, 620, 0.05);
+  }
+
+  // Perfect Just-Dodge Time-Flash Chime
+  justDodge() {
+    this.playTone(880, 0.09, "sine", 0.16, 1760, 0);
+    this.playTone(1318.5, 0.14, "triangle", 0.14, 2093, 0.04);
+    this.playNoise(0.08, 0.12, 4600, 0);
+  }
+
+  // Dramatic Stage-End K.O. Slow-Motion Bass Drop!
+  koFinish() {
+    this.playNoise(0.38, 0.30, 520, 0);
+    this.playTone(165, 0.55, "sawtooth", 0.22, 36, 0);
+    this.playTone(330, 0.35, "triangle", 0.16, 82, 0.04);
+    this.playTone(880, 0.22, "sine", 0.12, 440, 0.08);
+  }
+
+  // Stage Clear Rank Fanfare
+  stageRankFanfare(isS = false) {
+    const notes = isS ? [523.25, 659.25, 783.99, 1046.5, 1318.5] : [440, 554.37, 659.25, 880];
+    notes.forEach((f, i) => {
+      this.playTone(f, i === notes.length - 1 ? 0.36 : 0.14, "triangle", 0.14, null, i * 0.08);
+    });
   }
 
   startBgm() {

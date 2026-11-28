@@ -26,9 +26,30 @@
 
   let gameState = STATE.TITLE;
   let currentStage = 1; // 1: Harbour, 2: Restroom, 3: Bio-Lab F1, 4: Bio-Lab B1 (Gas), 5: Bio-Lab F3 (Dr. Genex)
-  let selectedChar = "mustache"; // "mustache" | "samurai" | "momo" | "raven" | "shaka" | "alice" | "ironfist" | "nightheron"
-  let selectedIsland = 0; // 0 = Jersey Harbour, 1 = Bio-Island Lab, 2 = Taiwan Island (pans camera down!)
+  let selectedChar = "mustache"; // "mustache" | "samurai" | "momo" | "raven" | "shaka" | "alice" | "ironfist" | "nightheron" | "magic" | "ling" | "rose"
+  let selectedIsland = 0; // 0 = Jersey Harbour, 1 = Bio-Island Lab, 2 = Taiwan Island, 3 = Japan Archipelago
+  let worldMapView = "world"; // "world" | "taiwan" | "japan"
+  let selectedRegionNode = 0;
   let mapCameraY = 0;
+
+  const TAIWAN_MAP_NODES = [
+    { num: "01", name: "台北 101", stage: 101, x: 204, y: 52, hit: [120, 8, 294, 92] },
+    { num: "02", name: "九份老街", stage: 102, x: 540, y: 66, hit: [446, 10, 632, 114] },
+    { num: "03", name: "日月潭", stage: 103, x: 112, y: 120, hit: [14, 72, 212, 166] },
+    { num: "04", name: "阿里山森林鐵路", stage: 104, x: 524, y: 196, hit: [418, 128, 632, 260] },
+    { num: "05", name: "安平古堡", stage: 105, x: 102, y: 215, hit: [8, 166, 200, 260] },
+    { num: "06", name: "高雄港", stage: 106, x: 108, y: 310, hit: [8, 262, 204, 354] },
+    { num: "07", name: "大稻埕・城隍廟", stage: 107, x: 378, y: 56, hit: [338, 26, 424, 88] },
+  ];
+
+  const JAPAN_MAP_NODES = [
+    { num: "01", name: "淺草雷門", stage: 201, x: 548, y: 204, hit: [478, 146, 628, 256] },
+    { num: "02", name: "晴空塔與隅田川", stage: 202, x: 528, y: 88, hit: [452, 24, 600, 144] },
+    { num: "03", name: "富士山與河口湖", stage: 203, x: 392, y: 230, hit: [314, 152, 470, 278] },
+    { num: "04", name: "伏見稻荷", stage: 204, x: 256, y: 142, hit: [190, 68, 326, 186] },
+    { num: "05", name: "大阪道頓堀", stage: 205, x: 218, y: 256, hit: [144, 194, 306, 326] },
+    { num: "06", name: "宮島海上大鳥居", stage: 206, x: 68, y: 214, hit: [10, 146, 140, 286] },
+  ];
   let tick = 0;
   let cameraX = 0;
   let stageWidth = 1800;
@@ -38,6 +59,20 @@
   let score = 0;
   let combo = 0;
   let comboTimer = 0;
+  let maxCombo = 0;
+  let displayHp = 100;
+  let stageStartTick = 0;
+  let stageDamageTaken = 0;
+  let stageBrisketsEaten = 0;
+  let bossWarningTimer = 0;
+  let bossWarningName = "";
+  let koSlowMoTimer = 0;
+  let koFlashTimer = 0;
+  let justDodgeFlashTimer = 0;
+  let ambientParticles = [];
+  let seaSelectedCountry = 0; // 0: MY, 1: SG, 2: TH, 3: VN
+  let titlePreviewMode = 1; // 0: J Attack, 1: K Skill (highlighted cyan), 2: R Ultimate
+  let stageClearSummary = null;
   let reloadCutsceneTimer = 0;
   let bossMutateTimer = 0;
   let bossMutateTitle = "";
@@ -50,6 +85,34 @@
   let unlockBannerTimer = 0;
   let unlockBannerTitle = "";
   let unlockBannerSub = "";
+
+  // Persistent Stage Clear & Rank Save Data (localStorage)
+  const PROGRESS_KEY = "protocol_progress_v1";
+  let stageProgress = {};
+  try {
+    const raw = localStorage.getItem(PROGRESS_KEY);
+    if (raw) stageProgress = JSON.parse(raw) || {};
+  } catch (_) {
+    stageProgress = {};
+  }
+  const RANK_ORDER = { C: 1, B: 2, A: 3, S: 4 };
+  function saveStageProgress(stageId, stageScore, rank, bestComboVal) {
+    const key = String(stageId);
+    const prev = stageProgress[key] || { cleared: false, bestScore: 0, bestRank: "C", bestCombo: 0 };
+    const nextRank = (RANK_ORDER[rank] || 0) >= (RANK_ORDER[prev.bestRank] || 0) ? rank : prev.bestRank;
+    stageProgress[key] = {
+      cleared: true,
+      bestScore: Math.max(prev.bestScore || 0, stageScore),
+      bestRank: nextRank,
+      bestCombo: Math.max(prev.bestCombo || 0, bestComboVal),
+    };
+    try {
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(stageProgress));
+    } catch (_) {}
+  }
+  function getStageRecord(stageId) {
+    return stageProgress[String(stageId)] || null;
+  }
 
   let player = null;
   let enemies = [];
@@ -84,37 +147,88 @@
       gameState = gameState === STATE.PLAYING ? STATE.PAUSED : STATE.PLAYING;
     }
     if (gameState === STATE.TITLE && (code === "ArrowLeft" || code === "KeyA" || code === "ArrowRight" || code === "KeyD")) {
-      const order = ["mustache", "samurai", "momo", "raven", "shaka", "alice", "ironfist", "nightheron"];
+      const order = ["mustache", "samurai", "momo", "raven", "shaka", "alice", "ironfist", "nightheron", "magic", "ling", "rose", "fallen"];
       const idx = order.indexOf(selectedChar);
       const dir = (code === "ArrowRight" || code === "KeyD") ? 1 : -1;
       selectedChar = order[(idx + dir + order.length) % order.length];
       syncCharButtons();
       if (player) player.charId = selectedChar;
       window.sound.init();
-      window.sound.playTone(selectedChar === "nightheron" ? 987 : selectedChar === "ironfist" ? 440 : selectedChar === "alice" ? 1397 : selectedChar === "shaka" ? 1318 : selectedChar === "raven" ? 1175 : selectedChar === "momo" ? 1046 : selectedChar === "samurai" ? 880 : 520, 0.06, "triangle", 0.08);
+      window.sound.playTone(selectedChar === "fallen" ? 1480 : selectedChar === "rose" ? 1350 : selectedChar === "ling" ? 1108 : selectedChar === "magic" ? 1244 : selectedChar === "nightheron" ? 987 : selectedChar === "ironfist" ? 440 : selectedChar === "alice" ? 1397 : selectedChar === "shaka" ? 1318 : selectedChar === "raven" ? 1175 : selectedChar === "momo" ? 1046 : selectedChar === "samurai" ? 880 : 520, 0.06, "triangle", 0.08);
     }
     if (gameState === STATE.WORLD_MAP) {
-      if (code === "ArrowDown" || code === "KeyS") {
-        selectedIsland = 2; // Pan camera DOWN to Taiwan Island!
-        window.sound.init();
-        window.sound.playTone(784, 0.07, "triangle", 0.09);
-      } else if (code === "ArrowUp" || code === "KeyW") {
-        if (selectedIsland === 2) selectedIsland = 0; // Pan camera UP to Island 1!
-        window.sound.init();
-        window.sound.playTone(520, 0.07, "triangle", 0.09);
-      } else if (code === "ArrowLeft" || code === "KeyA" || code === "ArrowRight" || code === "KeyD") {
-        const order = [0, 2, 1]; // Left -> Center(Taiwan) -> Right
-        const idx = order.indexOf(selectedIsland);
-        const dir = (code === "ArrowRight" || code === "KeyD") ? 1 : -1;
-        selectedIsland = order[(idx + dir + 3) % 3];
-        window.sound.init();
-        window.sound.playTone(selectedIsland === 2 ? 784 : selectedIsland === 1 ? 660 : 440, 0.07, "triangle", 0.09);
+      if (worldMapView === "sea") {
+        if (code === "Escape" || code === "Backspace") {
+          worldMapView = "world";
+          window.sound.init();
+          window.sound.playTone(440, 0.06, "triangle", 0.08);
+        } else if (code === "ArrowRight" || code === "KeyD") {
+          seaSelectedCountry = (seaSelectedCountry + 1) % 4;
+          window.sound.init();
+          window.sound.playTone(784, 0.06, "triangle", 0.08);
+        } else if (code === "ArrowLeft" || code === "KeyA") {
+          seaSelectedCountry = (seaSelectedCountry + 3) % 4;
+          window.sound.init();
+          window.sound.playTone(660, 0.06, "triangle", 0.08);
+        }
+      } else if (worldMapView === "taiwan" || worldMapView === "japan") {
+        const nodes = worldMapView === "taiwan" ? TAIWAN_MAP_NODES : JAPAN_MAP_NODES;
+        if (code === "Escape" || code === "Backspace") {
+          worldMapView = "world";
+          window.sound.init();
+          window.sound.playTone(440, 0.06, "triangle", 0.08);
+        } else if (code === "ArrowRight" || code === "KeyD" || code === "ArrowDown" || code === "KeyS") {
+          selectedRegionNode = (selectedRegionNode + 1) % nodes.length;
+          window.sound.init();
+          window.sound.playTone(784, 0.06, "triangle", 0.08);
+        } else if (code === "ArrowLeft" || code === "KeyA" || code === "ArrowUp" || code === "KeyW") {
+          selectedRegionNode = (selectedRegionNode - 1 + nodes.length) % nodes.length;
+          window.sound.init();
+          window.sound.playTone(660, 0.06, "triangle", 0.08);
+        }
+      } else {
+        if (code === "ArrowDown" || code === "KeyS") {
+          if (selectedIsland === 0 || selectedIsland === 1) selectedIsland = selectedIsland === 1 ? 3 : 2;
+          else selectedIsland = 4; // Pan camera DOWN to Row 3: Southeast Asia 4 Countries!
+          window.sound.init();
+          window.sound.playTone(selectedIsland === 4 ? 987 : 784, 0.07, "triangle", 0.09);
+        } else if (code === "ArrowUp" || code === "KeyW") {
+          if (selectedIsland === 4) selectedIsland = 2;
+          else if (selectedIsland === 2) selectedIsland = 0;
+          else if (selectedIsland === 3) selectedIsland = 1;
+          window.sound.init();
+          window.sound.playTone(520, 0.07, "triangle", 0.09);
+        } else if (code === "ArrowLeft" || code === "KeyA" || code === "ArrowRight" || code === "KeyD") {
+          const order = [0, 1, 2, 3, 4]; // Island 1 -> Bio-Island -> Taiwan -> Japan -> Southeast Asia
+          const idx = order.indexOf(selectedIsland);
+          const dir = (code === "ArrowRight" || code === "KeyD") ? 1 : -1;
+          selectedIsland = order[(idx + dir + order.length) % order.length];
+          window.sound.init();
+          window.sound.playTone(selectedIsland === 4 ? 987 : selectedIsland === 3 ? 880 : selectedIsland === 2 ? 784 : selectedIsland === 1 ? 660 : 440, 0.07, "triangle", 0.09);
+        }
       }
     }
     if ((code === "Enter" || code === "Space") && gameState === STATE.WORLD_MAP) {
       window.sound.init();
       window.sound.startBgm();
-      startStage(selectedIsland === 0 ? 1 : selectedIsland === 1 ? 3 : 7);
+      if (worldMapView === "taiwan") {
+        startStage(TAIWAN_MAP_NODES[selectedRegionNode].stage);
+      } else if (worldMapView === "japan") {
+        startStage(JAPAN_MAP_NODES[selectedRegionNode].stage);
+      } else if (worldMapView === "sea") {
+        const baseIds = [301, 401, 501, 601];
+        startStage(baseIds[seaSelectedCountry] || 301);
+      } else if (selectedIsland === 4) {
+        worldMapView = "sea";
+      } else if (selectedIsland === 2) {
+        worldMapView = "taiwan";
+        selectedRegionNode = 0;
+      } else if (selectedIsland === 3) {
+        worldMapView = "japan";
+        selectedRegionNode = 0;
+      } else {
+        startStage(selectedIsland === 0 ? 1 : 3);
+      }
     }
     if ((code === "Enter" || code === "Space") && gameState === STATE.TITLE) {
       window.sound.init();
@@ -138,31 +252,33 @@
       const rect = canvas.getBoundingClientRect();
       const cx = ((e.clientX - rect.left) / rect.width) * W;
       const cy = ((e.clientY - rect.top) / rect.height) * H;
-      const order = ["mustache", "samurai", "momo", "raven", "shaka", "alice", "ironfist", "nightheron"];
+      const order = ["mustache", "samurai", "momo", "raven", "shaka", "alice", "ironfist", "nightheron", "magic", "ling", "rose", "fallen"];
       const idx = order.indexOf(selectedChar);
-      const toneMap = { mustache: 520, samurai: 880, momo: 1046, raven: 1175, shaka: 1318, alice: 1397, ironfist: 440, nightheron: 987 };
+      const toneMap = { mustache: 520, samurai: 880, momo: 1046, raven: 1175, shaka: 1318, alice: 1397, ironfist: 440, nightheron: 987, magic: 1244, ling: 1108, rose: 1350, fallen: 1480 };
 
-      // Left arrow button (◀) -> previous fighter
-      if (cx >= 52 && cx <= 128 && cy >= 146 && cy <= 244) {
+      // Bottom Left arrow button (◀) -> previous fighter (aligned to bespoke Select art)
+      if (cx >= 4 && cx <= 40 && cy >= 286 && cy <= 354) {
         selectedChar = order[(idx - 1 + order.length) % order.length];
         syncCharButtons();
         if (player) player.charId = selectedChar;
         window.sound.playTone(toneMap[selectedChar] || 660, 0.06, "triangle", 0.08);
         return;
       }
-      // Right arrow button (▶) -> next fighter
-      if (cx >= 512 && cx <= 588 && cy >= 146 && cy <= 244) {
+      // Bottom Right arrow button (▶) -> next fighter (aligned to bespoke Select art)
+      if (cx >= 600 && cx <= 636 && cy >= 286 && cy <= 354) {
         selectedChar = order[(idx + 1) % order.length];
         syncCharButtons();
         if (player) player.charId = selectedChar;
         window.sound.playTone(toneMap[selectedChar] || 660, 0.06, "triangle", 0.08);
         return;
       }
-      // Pagination dots click
-      if (cy >= 278 && cy <= 302) {
-        const dotStartX = W / 2 - ((order.length - 1) * 18) / 2;
+      // Bottom 12-Hero Portrait Strip click (y: 288..352, x: 40..600 aligned to painted 12-portrait bar)
+      if (cy >= 288 && cy <= 352) {
+        const startX = 40;
+        const slotW = (600 - 40) / order.length;
         for (let i = 0; i < order.length; i++) {
-          if (Math.abs(cx - (dotStartX + i * 18)) <= 9) {
+          const sx = startX + i * slotW;
+          if (cx >= sx && cx <= sx + slotW) {
             selectedChar = order[i];
             syncCharButtons();
             if (player) player.charId = selectedChar;
@@ -170,6 +286,7 @@
             return;
           }
         }
+        return;
       }
       window.sound.startBgm();
       openWorldMap();
@@ -177,21 +294,110 @@
       const rect = canvas.getBoundingClientRect();
       const cx = ((e.clientX - rect.left) / rect.width) * W;
       const cy = ((e.clientY - rect.top) / rect.height) * H;
+      if (worldMapView === "taiwan" || worldMapView === "japan" || worldMapView === "sea") {
+        // Top-left Back to Global World Map button
+        if (cx >= 8 && cx <= 126 && cy >= 6 && cy <= 34) {
+          worldMapView = "world";
+          window.sound.playTone(440, 0.06, "triangle", 0.08);
+          return;
+        }
+        // Top-right quick switch Taiwan -> Japan -> SEA -> Taiwan
+        if (cx >= 518 && cx <= 632 && cy >= 6 && cy <= 34) {
+          worldMapView = worldMapView === "taiwan" ? "japan" : worldMapView === "japan" ? "sea" : "taiwan";
+          selectedIsland = worldMapView === "taiwan" ? 2 : worldMapView === "japan" ? 3 : 2;
+          selectedRegionNode = 0;
+          window.sound.playTone(880, 0.07, "triangle", 0.09);
+          return;
+        }
+        if (worldMapView === "sea") {
+          // 4 Country Tabs (MY, SG, TH, VN)
+          if (cy >= 44 && cy <= 74) {
+            const tabW = (W - 24) / 4;
+            const tabIdx = Math.max(0, Math.min(3, Math.floor((cx - 12) / tabW)));
+            seaSelectedCountry = tabIdx;
+            window.sound.playTone(660 + tabIdx * 90, 0.06, "triangle", 0.08);
+            return;
+          }
+          // 2x3 Stage Grid
+          const baseIds = [301, 401, 501, 601];
+          const baseId = baseIds[seaSelectedCountry] || 301;
+          for (let i = 0; i < 6; i++) {
+            const col = i % 3;
+            const row = Math.floor(i / 3);
+            const sx = 18 + col * 204;
+            const sy = 88 + row * 124;
+            if (cx >= sx && cx <= sx + 194 && cy >= sy && cy <= sy + 112) {
+              window.sound.startBgm();
+              startStage(baseId + i);
+              return;
+            }
+          }
+          return;
+        }
+        // Check clicking any numbered landmark on the Taiwan or Japan full-screen map!
+        const nodes = worldMapView === "taiwan" ? TAIWAN_MAP_NODES : JAPAN_MAP_NODES;
+        for (let i = 0; i < nodes.length; i++) {
+          const n = nodes[i];
+          const [x1, y1, x2, y2] = n.hit;
+          if (cx >= x1 && cx <= x2 && cy >= y1 && cy <= y2) {
+            selectedRegionNode = i;
+            window.sound.startBgm();
+            startStage(n.stage);
+            return;
+          }
+        }
+        return;
+      }
+      // Top-right SEA Tour entry pill on Global World Map
+      if (cx >= 488 && cx <= 632 && cy >= 6 && cy <= 36) {
+        worldMapView = "sea";
+        window.sound.playTone(987, 0.07, "triangle", 0.09);
+        return;
+      }
       if (cy >= 46 && cy <= 355) {
         if (cy >= 286) {
-          // Bottom cards: First click selects & smoothly pans camera; clicking active card deploys!
-          const clicked = cx < W / 3 ? 0 : cx < (W * 2) / 3 ? 2 : 1;
+          // 5 Bottom cards: First click selects & smoothly pans camera; clicking active card deploys / opens region map!
+          const clicked = Math.min(4, Math.max(0, Math.floor((cx / W) * 5)));
           if (selectedIsland !== clicked) {
             selectedIsland = clicked;
-            window.sound.playTone(clicked === 2 ? 784 : clicked === 1 ? 660 : 440, 0.07, "triangle", 0.09);
+            window.sound.playTone(clicked === 4 ? 987 : clicked === 3 ? 880 : clicked === 2 ? 784 : clicked === 1 ? 660 : 440, 0.07, "triangle", 0.09);
+            return;
+          }
+          if (clicked === 2) {
+            worldMapView = "taiwan";
+            selectedRegionNode = 0;
+            window.sound.playTone(880, 0.07, "triangle", 0.09);
+            return;
+          }
+          if (clicked === 3) {
+            worldMapView = "japan";
+            selectedRegionNode = 0;
+            window.sound.playTone(987, 0.07, "triangle", 0.09);
+            return;
+          }
+          if (clicked === 4) {
+            worldMapView = "sea";
+            window.sound.playTone(1046, 0.07, "triangle", 0.09);
             return;
           }
           window.sound.startBgm();
-          startStage(clicked === 0 ? 1 : clicked === 1 ? 3 : 7);
-        } else if (selectedIsland === 2 && mapCameraY > 180) {
-          // Currently panned down on Taiwan Island -> click anywhere on Taiwan deploys!
-          window.sound.startBgm();
-          startStage(7);
+          startStage(clicked === 0 ? 1 : 3);
+        } else if (mapCameraY > 510) {
+          // Currently panned down to Row 3 (Southeast Asia 4-Country Archipelago)!
+          // Upper-Left = Thailand (2), Upper-Right = Vietnam (3), Lower-Left = Malaysia (0), Lower-Right = Singapore (1)
+          const isUpper = cy < 168;
+          const isLeft = cx < W * 0.5;
+          seaSelectedCountry = isUpper ? (isLeft ? 2 : 3) : (isLeft ? 0 : 1);
+          selectedIsland = 4;
+          worldMapView = "sea";
+          window.sound.playTone(987, 0.07, "triangle", 0.09);
+        } else if (mapCameraY > 180) {
+          // Currently panned to Row 2 -> Left half opens Full Taiwan Map, Right half opens Full Japan Map!
+          const target = cx < W * 0.5 ? 2 : 3;
+          selectedIsland = target;
+          worldMapView = target === 2 ? "taiwan" : "japan";
+          selectedRegionNode = 0;
+          window.sound.playTone(target === 3 ? 987 : 880, 0.07, "triangle", 0.09);
         } else if (cx < W * 0.5) {
           selectedIsland = 0;
           window.sound.startBgm();
@@ -202,6 +408,17 @@
           startStage(3);
         }
       }
+    } else if (gameState === STATE.STAGE_CLEAR && stageClearSummary && stageClearTimer <= 325) {
+      const rect = canvas.getBoundingClientRect();
+      const cx = ((e.clientX - rect.left) / rect.width) * W;
+      const cy = ((e.clientY - rect.top) / rect.height) * H;
+      // Right button: Return to World Map
+      if (cx >= 332 && cx <= 496 && cy >= 248 && cy <= 286) {
+        openWorldMap();
+        return;
+      }
+      // Left button (or anywhere else on card): Advance to next stage
+      stageClearTimer = 0;
     } else if (gameState === STATE.GAME_OVER || gameState === STATE.VICTORY) {
       score = 0;
       unlockedUltLevel = 0;
@@ -218,6 +435,10 @@
   const btnCharAlice = document.getElementById("btn-char-alice");
   const btnCharIronfist = document.getElementById("btn-char-ironfist");
   const btnCharNightheron = document.getElementById("btn-char-nightheron");
+  const btnCharMagic = document.getElementById("btn-char-magic");
+  const btnCharLing = document.getElementById("btn-char-ling");
+  const btnCharRose = document.getElementById("btn-char-rose");
+  const btnCharFallen = document.getElementById("btn-char-fallen");
   const btnStage1 = document.getElementById("btn-stage-1");
   const btnStage2 = document.getElementById("btn-stage-2");
   const btnStageAirport = document.getElementById("btn-stage-airport");
@@ -227,7 +448,17 @@
   const btnMap = document.getElementById("btn-map");
   const btnMute = document.getElementById("btn-mute");
   const btnBgm = document.getElementById("btn-bgm");
+  const btnShader = document.getElementById("btn-shader");
   const btnFullscreen = document.getElementById("btn-fullscreen");
+  if (btnShader && window.shaderFX) {
+    btnShader.textContent = window.shaderFX.getLabel();
+    btnShader.addEventListener("click", () => {
+      window.shaderFX.cycleMode();
+      btnShader.textContent = window.shaderFX.getLabel();
+      window.sound.init();
+      window.sound.playTone(880, 0.06, "triangle", 0.08);
+    });
+  }
   const btnDevDrawer = document.getElementById("btn-dev-drawer");
   const devDrawer = document.getElementById("dev-drawer");
   const btnHelpModal = document.getElementById("btn-help-modal");
@@ -248,6 +479,9 @@
       alice: ["《黃銅指虎・薔薇連打》第3段破甲重轟", "《言靈指令：「跪下！」》2.5秒破甲支配（3.0s）", "《絕對契約・言靈領域》自動破甲＋彈指臣服"],
       ironfist: ["《鐵拳三段・半拍假動作》第3段突進白光重拳", "《繃帶緊束・鐵山靠》霸體衝撞撞飛（2.8s）", "《末班起飛・崩山轟拳》Lv.3 召喚夜鷺合體爆裂"],
       nightheron: ["《插袋連踢・雨幕三連》第3段水花月牙低掃", "《鞋跟輕叩・雨燕迴避踢》無敵滑步反踢（2.5s）", "《末班起飛・雨夜天翔》雙水刃＋Lv.3 高空斜踢"],
+      magic: ["《紫焰咒術・王冠骷髏連擊》第3段喚出黑暗騎士重劈", "《能量・牽引陣》無敵影步＋聚怪禁錮爆裂（3.0s）", "《暗徵召喚・暗影女皇降臨》雙骷髏＋Lv.3 紫光洪流"],
+      ling: ["《三聖輪轉・靈印連召》白虎撲擊→青龍貫穿→朱雀爆燃", "《北方・玄武鎮海印》無敵水盾＋360°震退＋回血4HP（3.0s）", "《四象靈契・聖獸降臨》龍虎雷柱＋Lv.3 四聖獸齊衝"],
+      rose: ["《烈焰火拳・三段連轟》燃炎直拳→熾焰勾拳→爆炎重轟", "《精神支配・意識侵入》桃紅腦波定身2秒＋火拳暴擊（3.0s）", "《群體暗示・三階煉獄火拳》燃炎→爆炎→Lv.3 巨型煉獄拳"],
     };
     const [a, s, u] = moves[selectedChar] || moves.mustache;
     atkEl.textContent = a;
@@ -361,6 +595,10 @@
     if (btnCharAlice) btnCharAlice.classList.toggle("active", selectedChar === "alice");
     if (btnCharIronfist) btnCharIronfist.classList.toggle("active", selectedChar === "ironfist");
     if (btnCharNightheron) btnCharNightheron.classList.toggle("active", selectedChar === "nightheron");
+    if (btnCharMagic) btnCharMagic.classList.toggle("active", selectedChar === "magic");
+    if (btnCharLing) btnCharLing.classList.toggle("active", selectedChar === "ling");
+    if (btnCharRose) btnCharRose.classList.toggle("active", selectedChar === "rose");
+    if (btnCharFallen) btnCharFallen.classList.toggle("active", selectedChar === "fallen");
     document.body.classList.toggle("char-mustache", selectedChar === "mustache");
     document.body.classList.toggle("char-samurai", selectedChar === "samurai");
     document.body.classList.toggle("char-momo", selectedChar === "momo");
@@ -369,10 +607,22 @@
     document.body.classList.toggle("char-alice", selectedChar === "alice");
     document.body.classList.toggle("char-ironfist", selectedChar === "ironfist");
     document.body.classList.toggle("char-nightheron", selectedChar === "nightheron");
+    document.body.classList.toggle("char-magic", selectedChar === "magic");
+    document.body.classList.toggle("char-ling", selectedChar === "ling");
+    document.body.classList.toggle("char-rose", selectedChar === "rose");
+    document.body.classList.toggle("char-fallen", selectedChar === "fallen");
     const skillLabelEl = document.getElementById("tbtn-skill-label");
     if (skillLabelEl) {
       skillLabelEl.textContent =
-        selectedChar === "nightheron"
+        selectedChar === "fallen"
+          ? "審判"
+          : selectedChar === "rose"
+          ? "支配"
+          : selectedChar === "ling"
+          ? "玄武"
+          : selectedChar === "magic"
+          ? "牽引"
+          : selectedChar === "nightheron"
           ? "踏影"
           : selectedChar === "ironfist"
           ? "鐵壁"
@@ -398,7 +648,13 @@
       player.charId = charId;
       if (gameState === STATE.PLAYING) {
         showSpeech(
-          charId === "nightheron"
+          charId === "rose"
+            ? "蘿絲登場——先以精神支配鎖死意識，再用煉獄火拳燒成灰燼！"
+            : charId === "ling"
+            ? "四象召喚者・鈴登場！三聖輪轉結印，按 K 玄武護體回血！"
+            : charId === "magic"
+            ? "黑魔法師・瑪姬降臨！按 K 展開牽引陣，按 R 喚出暗影女皇！"
+            : charId === "nightheron"
             ? "叩！夜鷺登場——雙手插袋，雨幕水刃踢！"
             : charId === "ironfist"
             ? "鐵拳上場！拉緊白繃帶，鐵山靠加崩山轟拳！"
@@ -471,6 +727,34 @@
     });
   }
 
+  if (btnCharMagic) {
+    btnCharMagic.addEventListener("click", () => {
+      window.sound.init();
+      selectCharacter("magic");
+    });
+  }
+
+  if (btnCharLing) {
+    btnCharLing.addEventListener("click", () => {
+      window.sound.init();
+      selectCharacter("ling");
+    });
+  }
+
+  if (btnCharRose) {
+    btnCharRose.addEventListener("click", () => {
+      window.sound.init();
+      selectCharacter("rose");
+    });
+  }
+
+  if (btnCharFallen) {
+    btnCharFallen.addEventListener("click", () => {
+      window.sound.init();
+      selectCharacter("fallen");
+    });
+  }
+
   function syncStageButtons() {
     btnStage1.classList.toggle("active", currentStage === 1 && gameState !== STATE.WORLD_MAP);
     btnStage2.classList.toggle("active", currentStage === 2 && gameState !== STATE.WORLD_MAP);
@@ -485,7 +769,9 @@
 
   function openWorldMap() {
     gameState = STATE.WORLD_MAP;
+    worldMapView = "world";
     selectedIsland = 0;
+    selectedRegionNode = 0;
     mapCameraY = 0;
     window.sound.isBuff = false;
     syncStageButtons();
@@ -563,10 +849,11 @@
     btnBgm.textContent = on ? "🎵 BGM" : "🔇 BGM";
   });
 
-  // --- Mobile Touch Controls (Virtual Joystick + Multi-Touch Action Buttons) ---
+  // --- Always-On Touch Controls (Virtual Joystick + Multi-Touch Action Buttons) ---
   let touchAtkHeld = false;
-  const btnTouchToggle = document.getElementById("btn-touch-toggle");
   const joyZone = document.getElementById("joy-zone");
+  const joyBase = document.getElementById("joy-base");
+  const joyDirArc = document.getElementById("joy-dir-arc");
   const joyKnob = document.getElementById("joy-knob");
   const tbtnAtk = document.getElementById("tbtn-atk");
   const tbtnJump = document.getElementById("tbtn-jump");
@@ -574,19 +861,17 @@
   const tbtnSkillMask = document.getElementById("tbtn-skill-mask");
   const tbtnSkillNum = document.getElementById("tbtn-skill-num");
 
-  if (btnTouchToggle) {
-    btnTouchToggle.addEventListener("click", () => {
-      const enabled = document.body.classList.toggle("touch-enabled");
-      btnTouchToggle.classList.toggle("active", enabled);
-    });
-  }
-
   if (joyZone && joyKnob) {
     let joyPointerId = null;
-    const maxRadius = 34;
+    let originX = 0;
+    let originY = 0;
+    const maxRadius = 36;
 
     const resetJoy = () => {
       joyPointerId = null;
+      joyZone.classList.remove("joy-active");
+      if (joyBase) joyBase.style.transform = "translate(0px, 0px)";
+      if (joyDirArc) joyDirArc.classList.remove("visible");
       joyKnob.style.transform = "translate(0px, 0px)";
       keys["ArrowLeft"] = false;
       keys["ArrowRight"] = false;
@@ -595,17 +880,23 @@
     };
 
     const updateJoy = (clientX, clientY) => {
-      const rect = joyZone.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      let dx = clientX - cx;
-      let dy = clientY - cy;
+      let dx = clientX - originX;
+      let dy = clientY - originY;
       const dist = Math.hypot(dx, dy);
       if (dist > maxRadius) {
         dx = (dx / dist) * maxRadius;
         dy = (dy / dist) * maxRadius;
       }
       joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+      if (joyDirArc) {
+        if (dist > 9) {
+          const deg = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+          joyDirArc.style.transform = `rotate(${deg}deg)`;
+          joyDirArc.classList.add("visible");
+        } else {
+          joyDirArc.classList.remove("visible");
+        }
+      }
       const dead = 10;
       keys["ArrowLeft"] = dx < -dead;
       keys["ArrowRight"] = dx > dead;
@@ -619,6 +910,16 @@
       window.sound.startBgm();
       joyPointerId = e.pointerId;
       joyZone.setPointerCapture(e.pointerId);
+      joyZone.classList.add("joy-active");
+      // MOBA-style floating joystick origin: subtly recenter base toward initial thumb touch
+      const rect = joyZone.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const shiftX = Math.max(-18, Math.min(18, e.clientX - cx));
+      const shiftY = Math.max(-18, Math.min(18, e.clientY - cy));
+      originX = cx + shiftX;
+      originY = cy + shiftY;
+      if (joyBase) joyBase.style.transform = `translate(${shiftX}px, ${shiftY}px)`;
       updateJoy(e.clientX, e.clientY);
     });
 
@@ -697,6 +998,10 @@
       ifFinisherVisual: 0,
       ifRocketTimer: 0,
       nhFinisherVisual: 0,
+      magicFinisherVisual: 0,
+      lingFinisherVisual: 0,
+      roseFinisherVisual: 0,
+      fallenFinisherVisual: 0,
       skillCd: 0,
       skillMaxCd: 180,
       skillType: null,
@@ -741,6 +1046,80 @@
 
   function isNightHeronHero() {
     return player && player.charId === "nightheron";
+  }
+
+  function isMagic() {
+    return player && player.charId === "magic";
+  }
+
+  function isLing() {
+    return player && player.charId === "ling";
+  }
+
+  function isRose() {
+    return player && player.charId === "rose";
+  }
+
+  function isFallen() {
+    return player && player.charId === "fallen";
+  }
+
+  // Unified Remote Targeted AoE VFX Engine (Supports 5 Exclusive 1x4 Hero Strips: Sky-Drop & Ground-Erupt!)
+  const REMOTE_AOE_STYLES = {
+    fallen: { sigil: "vfx_fallen_sigil", strike: "vfx_fallen_skull", pillar: "vfx_fallen_pillar", burst: "vfx_fallen_burst", motion: "drop", color: "#e9d5ff", label: "審判" },
+    shaka: { sigil: "vfx_shaka_sigil", strike: "vfx_shaka_strike", pillar: "vfx_shaka_pillar", burst: "vfx_shaka_burst", motion: "drop", color: "#fde047", label: "如來掌" },
+    magic: { sigil: "vfx_magic_sigil", strike: "vfx_magic_strike", pillar: "vfx_magic_pillar", burst: "vfx_magic_burst", motion: "erupt", color: "#c084fc", label: "深淵爪" },
+    rose: { sigil: "vfx_rose_sigil", strike: "vfx_rose_strike", pillar: "vfx_rose_pillar", burst: "vfx_rose_burst", motion: "erupt", color: "#fb923c", label: "煉獄焰" },
+    ling: { sigil: "vfx_ling_sigil", strike: "vfx_ling_strike", pillar: "vfx_ling_pillar", burst: "vfx_ling_burst", motion: "drop", color: "#2dd4bf", label: "四象雷" },
+  };
+
+  function spawnRemoteAoe(style, tx, ty, dmg = 26, delay = 0, radius = 84) {
+    skillEffects.push({
+      type: "sky_drop_skull",
+      style: REMOTE_AOE_STYLES[style] ? style : "fallen",
+      x: tx,
+      y: Math.max(GROUND_MIN_Y, Math.min(GROUND_MAX_Y, ty)),
+      dmg,
+      delay,
+      radius,
+      impacted: false,
+      life: 44 + delay,
+      maxLife: 44,
+    });
+  }
+
+  function triggerRemoteAoe(style, maxTargets = 3, dmg = 24, radius = 86) {
+    const live = enemies
+      .filter((e) => !e.dead && e.x >= cameraX - 24 && e.x <= cameraX + W + 24)
+      .sort((a, b) => Math.abs(b.x - player.x) - Math.abs(a.x - player.x));
+    const targets = live.slice(0, maxTargets);
+    if (targets.length === 0) {
+      spawnRemoteAoe(style, player.x + player.facing * 150, player.y, dmg, 0, radius);
+      return;
+    }
+    targets.forEach((e, idx) => {
+      spawnRemoteAoe(style, e.x, e.y, dmg, idx * 7, radius);
+    });
+  }
+
+  function triggerRemoteAoeStorm(style, count = 6, dmg = 34, radius = 92) {
+    const live = enemies.filter((e) => !e.dead && e.x >= cameraX - 24 && e.x <= cameraX + W + 24);
+    for (let d = 0; d < count; d++) {
+      const tgt = live.length > 0 ? live[d % live.length] : null;
+      const tx = tgt
+        ? tgt.x + (d >= live.length ? (Math.random() - 0.5) * 72 : 0)
+        : cameraX + 90 + ((d * 82) % (W - 140));
+      const ty = tgt ? tgt.y : GROUND_MIN_Y + 14 + (d % 3) * 24;
+      spawnRemoteAoe(style, tx, ty, dmg, d * 6, radius);
+    }
+  }
+
+  function spawnFallenSkyDrop(tx, ty, dmg = 26, delay = 0, radius = 84) {
+    spawnRemoteAoe("fallen", tx, ty, dmg, delay, radius);
+  }
+
+  function triggerFallenRemoteJudgment(maxTargets = 3, dmg = 26, radius = 86) {
+    triggerRemoteAoe("fallen", maxTargets, dmg, radius);
   }
 
   function hasSamuraiDualMode() {
@@ -950,39 +1329,52 @@
 
     e.dead = true;
     e.fadeTimer = 46;
-    score += e.type === "genex_boss" ? 5000 : e.type === "boss" ? 2000 : e.type === "miniboss" ? 1000 : e.type === "heavy" || e.type === "mutant_brute" ? 350 : 180;
+    const isMajorBoss =
+      e.type === "genex_boss" ||
+      e.type === "boss" ||
+      e.type === "boss_89_king" ||
+      e.type === "boss_train_mechanic" ||
+      e.type === "boss_ironfist" ||
+      e.type === "boss_nightheron" ||
+      e.type === "wt_boss";
+    score +=
+      e.type === "genex_boss"
+        ? 5000
+        : isMajorBoss
+        ? 2500
+        : e.type === "miniboss"
+        ? 1000
+        : e.type === "heavy" || e.type === "mutant_brute" || e.type === "wt_guard" || e.type === "train_porter"
+        ? 350
+        : 180;
     window.sound.enemyKo();
 
-    // Defeating a Mini-Boss unlocks/upgrades the Ultimate Move (Lv.1 -> Lv.2 -> Lv.3 Dual-Katana!)
-    if (e.type === "miniboss") {
+    // Defeating ANY Mini-Boss or Stage Boss (including Taiwan Tour, Japan Tour, Train, Classic Stages) unlocks Ultimate Level (Lv.1 -> Lv.2 -> Lv.3)!
+    if (e.type === "miniboss" || isMajorBoss) {
+      const prevLevel = unlockedUltLevel;
       unlockedUltLevel = Math.min(3, unlockedUltLevel + 1);
       player.hp = Math.min(player.maxHp, player.hp + 35);
       player.reloadGauge = 100;
-      window.sound.skillUnlock();
-      triggerShake(18, 5);
-      spawnParticles(e.x, e.y, 34, unlockedUltLevel >= 3 ? "#c084fc" : "#fcd34d", 26, 4.5, 32);
-      unlockBannerTimer = 250;
-      if (unlockedUltLevel === 1) {
-        unlockBannerTitle = "★ Lv.1 新招式解鎖！NEW MOVE UNLOCKED! ★";
-        unlockBannerSub = "大絕範圍加大！鬍子超連擊 ／ 武士12秒持續亂舞！(已滿能量，快按 R!)";
-        showSpeech(
-          isSamurai() ? "Lv.1 解鎖！12秒大範圍持續亂舞！" : "新招式解鎖！超大範圍超連擊！",
-          210
-        );
-      } else if (unlockedUltLevel === 2) {
-        unlockBannerTitle = "★★ Lv.2 奧義強化！SUPER ULTIMATE! ★★";
-        unlockBannerSub = "威力再提升！武士14秒超廣域亂舞（再打倒第3隻小魔王解鎖雙刀模式！）";
-        showSpeech(
-          isSamurai() ? "Lv.2 強化！再打贏第3隻小魔王就能解鎖雙刀模式！" : "奧義強化！超廣域 4 連擊！",
-          210
-        );
+      if (unlockedUltLevel > prevLevel) {
+        window.sound.skillUnlock();
+        triggerShake(18, 5);
+        spawnParticles(e.x, e.y, 34, unlockedUltLevel >= 3 ? "#c084fc" : "#fcd34d", 26, 4.5, 32);
+        unlockBannerTimer = 250;
+        if (unlockedUltLevel === 1) {
+          unlockBannerTitle = "★ Lv.1 大絕進化！ULTIMATE LV.1 UNLOCKED! ★";
+          unlockBannerSub = "大絕持續 12 秒＋威力／範圍大幅提升！(已補滿能量，快按 R!)";
+          showSpeech("★ Lv.1 大絕解鎖！能量已滿，快按 R 體驗進階必殺！", 210);
+        } else if (unlockedUltLevel === 2) {
+          unlockBannerTitle = "★★ Lv.2 奧義強化！SUPER ULTIMATE LV.2! ★★";
+          unlockBannerSub = "大絕持續 14 秒＋超廣域連擊強化！(再擊敗 1 位 Boss 解鎖 Lv.3 終極收招！)";
+          showSpeech("★★ Lv.2 奧義強化！再打倒 1 位魔王就能解鎖 Lv.3 終極奧義！", 210);
+        } else {
+          unlockBannerTitle = "★★★ Lv.3 終極奧義完全解放！MAX ULTIMATE! ★★★";
+          unlockBannerSub = "全角色 Lv.3 終極收招解鎖！（雙刀交叉／暗影女皇／四聖獸齊衝／天翔斜踢！）";
+          showSpeech("★★★ Lv.3 終極奧義 MAX 解放！按 R 釋放最強收招！", 230);
+        }
       } else {
-        unlockBannerTitle = "★★★ 終極解鎖！《雙刀模式・交叉突進》★★★";
-        unlockBannerSub = "街頭武士召喚紫柄第二把武士刀！開大按攻擊發動【X 交叉突進】！(快按 R!)";
-        showSpeech(
-          isSamurai() ? "雙刀模式解鎖！深藍＋紫柄武士刀【交叉突進】！" : "終極奧義 MAX！全開突破！",
-          230
-        );
+        spawnText("BOSS KO! 能量全滿!", e.x, e.y - 68, "#fcd34d", 1.15);
       }
     }
   }
@@ -1016,10 +1408,37 @@
     activeWaveIndex = 0;
     combo = 0;
     comboTimer = 0;
+    maxCombo = 0;
+    displayHp = player ? player.maxHp : 100;
+    stageStartTick = tick;
+    stageDamageTaken = 0;
+    stageBrisketsEaten = 0;
+    bossWarningTimer = 0;
+    bossWarningName = "";
+    koSlowMoTimer = 0;
+    koFlashTimer = 0;
+    justDodgeFlashTimer = 0;
+    ambientParticles = [];
+    stageClearSummary = null;
     hitstop = 0;
     shakeTime = 0;
     goArrowTimer = 0;
     window.sound.isBuff = false;
+    if (window.sound.setBossTension) window.sound.setBossTension(false);
+    if (window.shaderFX) {
+      const wtGrade = window.WorldTour ? window.WorldTour.getStage(stageNum) : null;
+      const grade =
+        wtGrade && wtGrade.region === "japan"
+          ? "japan"
+          : stageNum === 102
+          ? "jiufen"
+          : wtGrade && (wtGrade.region === "malaysia" || wtGrade.region === "singapore" || wtGrade.region === "thailand" || wtGrade.region === "vietnam")
+          ? "sea"
+          : stageNum === 3 || stageNum === 4 || stageNum === 5
+          ? "biolab"
+          : "default";
+      window.shaderFX.setRegionGrade(grade);
+    }
 
     if (stageNum === 1) {
       stageWidth = 3200;
@@ -1415,7 +1834,7 @@
       window.WorldTour.preloadStage(stageNum);
       stageWidth = wt.stageWidth;
       smokers = [
-        createSmoker(Math.round(stageWidth * 0.36), 236),
+        createSmoker(Math.round(stageWidth * 0.3), 236),
         createSmoker(Math.round(stageWidth * 0.72), 236),
       ];
       waves = window.WorldTour.buildWaves(stageNum);
@@ -1518,6 +1937,10 @@
   // --- Ultimate Cutscene (Arm Reload for Mustache / Katana Flurry for Samurai) ---
   function triggerArmReload() {
     if (player.reloadGauge < 100 || isBuff()) return;
+    if (window.shaderFX) {
+      window.shaderFX.pulseAberration(0.88);
+      window.shaderFX.triggerShockwave((player.x - cameraX) / W, (player.y - 36) / H, 0.055);
+    }
     player.reloadGauge = 0;
     // Unlocked New Move extends Ultimate duration to 12s (720f) or 14s (840f) — guaranteed > 10s!
     player.buffMax = unlockedUltLevel >= 2 ? 840 : unlockedUltLevel >= 1 ? 720 : 600;
@@ -1525,7 +1948,13 @@
     player.invulnTimer = 80;
     gameState = STATE.RELOAD_CUTSCENE;
     reloadCutsceneTimer = 72;
-    if (isNightHeronHero()) {
+    if (isRose()) {
+      window.sound.aliceUltDomain();
+    } else if (isLing()) {
+      window.sound.shakaUltActivate();
+    } else if (isMagic()) {
+      window.sound.aliceUltDomain();
+    } else if (isNightHeronHero()) {
       window.sound.heelDoubleTap();
     } else if (isIronFistHero()) {
       window.sound.armReload();
@@ -1550,15 +1979,17 @@
     slashEffects.push({ x, y, z, facing, angle, radius, color, life, maxLife: life });
   }
 
-  function spawnSwordWave(x, y, z, facing, color = "#38bdf8", lifesteal = false) {
+  function spawnSwordWave(x, y, z, facing, color = "#38bdf8", lifesteal = false, spriteKey = null, heavy = false) {
     swordWaves.push({
       x,
       y,
       z,
-      vx: facing * 6.8,
+      vx: facing * (spriteKey ? 7.6 : 6.8),
       facing,
       color,
       lifesteal,
+      spriteKey,
+      heavy,
       life: 28,
       maxLife: 28,
       hitIds: new Set(),
@@ -1570,15 +2001,136 @@
     tick++;
 
     if (shakeTime > 0) shakeTime--;
+    if (bossWarningTimer > 0) bossWarningTimer--;
+    if (koFlashTimer > 0) koFlashTimer--;
+    if (justDodgeFlashTimer > 0) justDodgeFlashTimer--;
+    if (player) {
+      if (displayHp > player.hp) {
+        displayHp = Math.max(player.hp, displayHp - Math.max(0.35, (displayHp - player.hp) * 0.08));
+      } else {
+        displayHp = player.hp;
+      }
+    }
+    if (combo > maxCombo) maxCombo = combo;
+
     if (hitstop > 0) {
       hitstop--;
       clearJustPressed();
       return;
     }
 
+    // Dramatic Final-Boss K.O. Slow-Motion (runs simulation at 1/3 speed)
+    if (koSlowMoTimer > 0) {
+      koSlowMoTimer--;
+      if (koSlowMoTimer % 3 !== 0) {
+        updateParticles();
+        updateFloatingTexts();
+        clearJustPressed();
+        return;
+      }
+    }
+
     if (gameState === STATE.RELOAD_CUTSCENE) {
       reloadCutsceneTimer--;
-      if (isNightHeronHero()) {
+      if (isFallen()) {
+        // 🪽 墮落天使 — 《審判之痕・三階審判斬擊》 Awakening Cutscene!
+        if (reloadCutsceneTimer % 6 === 0) {
+          spawnParticles(player.x + (Math.random() - 0.5) * 76, player.y, 18 + Math.random() * 40, "#e9d5ff", 3, 2.8, 20);
+          spawnParticles(player.x + (Math.random() - 0.5) * 64, player.y, 16 + Math.random() * 34, "#fde047", 2, 2.4, 18);
+        }
+        if (reloadCutsceneTimer === 36) {
+          window.sound.shakaUltActivate();
+          triggerShake(16, 5.2);
+          triggerFallenRemoteJudgment(2, 24, 88);
+        }
+        if (reloadCutsceneTimer <= 0) {
+          gameState = STATE.PLAYING;
+          showSpeech("審判之痕已覺醒！罪孽之人，迎接天降裁決！", 160);
+        }
+      } else if (isRose()) {
+        // 🔥 蘿絲 — 群體暗示・三階煉獄火拳 Cutscene!
+        if (reloadCutsceneTimer % 6 === 0) {
+          spawnParticles(player.x + (Math.random() - 0.5) * 76, player.y, 18 + Math.random() * 38, "#ec4899", 3, 2.8, 20);
+          spawnParticles(player.x + (Math.random() - 0.5) * 64, player.y, 16 + Math.random() * 32, "#f97316", 3, 2.6, 18);
+        }
+        if (reloadCutsceneTimer === 36) {
+          window.sound.aliceVoiceCommand();
+          triggerShake(14, 4.5);
+          triggerRemoteAoe("rose", 2, 24, 86);
+          skillEffects.push({
+            type: "shockwave",
+            x: player.x,
+            y: player.y,
+            radius: 18,
+            maxRadius: 158,
+            color: "#ec4899",
+            life: 22,
+            maxLife: 22,
+          });
+          // Mass Suggestion: briefly stun all on-screen enemies!
+          for (const e of enemies) {
+            if (!e.dead && e.x >= cameraX - 20 && e.x <= cameraX + W + 20) {
+              e.hurtTimer = Math.max(e.hurtTimer, 72);
+              e.armorBreakTimer = Math.max(e.armorBreakTimer || 0, 120);
+            }
+          }
+        }
+        if (reloadCutsceneTimer <= 0) {
+          gameState = STATE.PLAYING;
+          showSpeech("群體暗示完成！三階煉獄火拳，全開焚盡！", 160);
+        }
+      } else if (isLing()) {
+        // 🏮 鈴 — 四象靈契・聖獸降臨 Cutscene!
+        if (reloadCutsceneTimer % 6 === 0) {
+          const colors = ["#2dd4bf", "#f8fafc", "#ef4444", "#38bdf8"];
+          const col = colors[(reloadCutsceneTimer / 6) % 4];
+          spawnParticles(player.x + (Math.random() - 0.5) * 76, player.y, 18 + Math.random() * 38, col, 4, 2.8, 20);
+        }
+        if (reloadCutsceneTimer === 36) {
+          window.sound.waterSweep();
+          triggerShake(14, 4.5);
+          triggerRemoteAoe("ling", 2, 24, 86);
+          skillEffects.push({
+            type: "shockwave",
+            x: player.x,
+            y: player.y,
+            radius: 18,
+            maxRadius: 140,
+            color: "#2dd4bf",
+            life: 20,
+            maxLife: 20,
+          });
+        }
+        if (reloadCutsceneTimer <= 0) {
+          gameState = STATE.PLAYING;
+          showSpeech("四象靈契展開！青龍白虎朱雀玄武齊降！", 160);
+        }
+      } else if (isMagic()) {
+        // 🔮 瑪姬 — 開門・裂界 暗影女皇降臨 Cutscene!
+        if (reloadCutsceneTimer % 6 === 0) {
+          spawnParticles(player.x + (Math.random() - 0.5) * 74, player.y, 18 + Math.random() * 36, "#c084fc", 4, 2.8, 20);
+          spawnParticles(player.x + (Math.random() - 0.5) * 74, player.y, 12, "#a855f7", 3, 2.2, 18);
+        }
+        if (reloadCutsceneTimer === 36) {
+          window.sound.aliceVoiceCommand();
+          triggerShake(14, 4.5);
+          triggerRemoteAoe("magic", 2, 24, 86);
+          skillEffects.push({
+            type: "shockwave",
+            x: player.x,
+            y: player.y,
+            radius: 18,
+            maxRadius: 136,
+            color: "#a855f7",
+            life: 20,
+            maxLife: 20,
+          });
+        }
+        if (reloadCutsceneTimer <= 0) {
+          gameState = STATE.PLAYING;
+          showSpeech("裂界開啟！王冠骷髏與暗影女皇降臨！", 160);
+        }
+      } else if (isNightHeronHero()) {
         // Night Heron Burgundy Heel Double-Tap Rain Awakening Cutscene!
         if (reloadCutsceneTimer % 6 === 0) {
           spawnParticles(player.x + (Math.random() - 0.5) * 68, player.y, 18 + Math.random() * 34, "#38bdf8", 4, 2.6, 20);
@@ -1859,7 +2411,11 @@
     if (gameState === STATE.STAGE_CLEAR) {
       stageClearTimer--;
       updateParticles();
+      updateAmbientParticles();
       updateFloatingTexts();
+      if (stageClearTimer <= 325 && (justPressed["Enter"] || justPressed["Space"])) {
+        stageClearTimer = 0;
+      }
       if (stageClearTimer <= 0) {
         if (currentStage === 1) {
           startStage(2);
@@ -1935,6 +2491,7 @@
     updateSmokersAndPickups();
     updateSlashEffectsAndWaves();
     updateParticles();
+    updateAmbientParticles();
     updateFloatingTexts();
     updateCamera();
 
@@ -1969,6 +2526,10 @@
     if (p.aliceSnapVisual > 0) p.aliceSnapVisual--;
     if (p.ifFinisherVisual > 0) p.ifFinisherVisual--;
     if (p.nhFinisherVisual > 0) p.nhFinisherVisual--;
+    if (p.magicFinisherVisual > 0) p.magicFinisherVisual--;
+    if (p.lingFinisherVisual > 0) p.lingFinisherVisual--;
+    if (p.roseFinisherVisual > 0) p.roseFinisherVisual--;
+    if (p.fallenFinisherVisual > 0) p.fallenFinisherVisual--;
     if (p.ifRocketTimer > 0) {
       p.ifRocketTimer--;
       if (p.ifRocketTimer >= 5) {
@@ -2104,6 +2665,158 @@
           }
         }
         // Alice: Absolute Contract — Linguistic Domain auto-shreds nearby enemy armor!
+      } else if (isFallen()) {
+        if (tick % 6 === 0) {
+          spawnParticles(p.x + (Math.random() - 0.5) * 46, p.y, 20 + Math.random() * 36, tick % 12 === 0 ? "#c084fc" : "#f8fafc", 1, 1.3, 18);
+        }
+        // Lv.3 Finisher: 《終末宣告》 — Colossal Greatsword Cleave + 8 Staggered Remote Sky-Drop Skulls across the entire screen!
+        if (unlockedUltLevel >= 3 && p.buffTimer === 1) {
+          p.fallenFinisherVisual = 42;
+          p.invulnTimer = Math.max(p.invulnTimer, 42);
+          window.sound.shakaHeavenDrop();
+          triggerShake(22, 6.5);
+          spawnText("🪽 Lv.3 終末宣告・萬骸審判降臨!", p.x, p.y - 96, "#e9d5ff", 1.35);
+          const live = enemies.filter((e) => !e.dead && e.x >= cameraX - 24 && e.x <= cameraX + W + 24);
+          const totalDrops = 8;
+          for (let d = 0; d < totalDrops; d++) {
+            const tgt = live.length > 0 ? live[d % live.length] : null;
+            const tx = tgt
+              ? tgt.x + (d >= live.length ? (Math.random() - 0.5) * 70 : 0)
+              : cameraX + 90 + ((d * 76) % (W - 140));
+            const ty = tgt ? tgt.y : GROUND_MIN_Y + 14 + (d % 3) * 24;
+            spawnFallenSkyDrop(tx, ty, 38, d * 6, 94);
+          }
+        }
+      } else if (isRose()) {
+        if (tick % 6 === 0) {
+          spawnParticles(p.x + (Math.random() - 0.5) * 44, p.y, 18 + Math.random() * 34, tick % 12 === 0 ? "#ec4899" : "#f97316", 1, 1.4, 18);
+        }
+        // Lv.3 Finisher: 《煉獄拳・極限熾焰毀滅重轟》 Mass Psychic Lock + Colossal Inferno Fist!
+        if (unlockedUltLevel >= 3 && p.buffTimer === 1) {
+          p.roseFinisherVisual = 36;
+          p.invulnTimer = Math.max(p.invulnTimer, 36);
+          window.sound.groundSlam();
+          window.sound.aliceUltDomain();
+          triggerShake(24, 7.5);
+          triggerRemoteAoeStorm("rose", 6, 36, 90);
+          skillEffects.push({
+            type: "shockwave",
+            x: p.x + p.facing * 72,
+            y: p.y,
+            radius: 24,
+            maxRadius: 240,
+            color: "#f97316",
+            life: 28,
+            maxLife: 28,
+          });
+          spawnText("🔥 Lv.3 煉獄拳・極限熾焰毀滅重轟!", p.x, p.y - 94, "#fb923c", 1.35);
+          for (const e of enemies) {
+            if (e.dead) continue;
+            if (e.x >= cameraX - 20 && e.x <= cameraX + W + 20) {
+              if (currentStage === 6 && window.AirportStage) {
+                window.AirportStage.tryInterruptTeamCombo(e, spawnText, spawnParticles, triggerShake);
+              }
+              const dealt = dealEnemyDamage(e, 68, 0.45);
+              e.hurtTimer = 36;
+              e.knockdownTimer = 32;
+              e.vx = (e.x >= p.x ? 1 : -1) * 7.0;
+              e.vz = 5.6;
+              combo++;
+              comboTimer = 135;
+              score += 900;
+              spawnParticles(e.x, e.y, 32, "#f97316", 14, 4.8, 22);
+              spawnParticles(e.x, e.y, 26, "#ec4899", 8, 4.2, 20);
+              spawnText(`煉獄拳 ${dealt}!`, e.x, e.y - 66, "#fb923c", 1.18);
+              if (e.hp <= 0) handleEnemyDefeat(e);
+            }
+          }
+        }
+      } else if (isLing()) {
+        if (tick % 6 === 0) {
+          const cols = ["#2dd4bf", "#f8fafc", "#ef4444", "#38bdf8"];
+          spawnParticles(p.x + (Math.random() - 0.5) * 48, p.y, 18 + Math.random() * 34, cols[(tick / 6) % 4], 1, 1.3, 18);
+        }
+        // Lv.3 Finisher: 《四象歸一・聖獸齊衝》 All 4 Divine Beasts Full-Screen Convergence!
+        if (unlockedUltLevel >= 3 && p.buffTimer === 1) {
+          p.lingFinisherVisual = 36;
+          p.invulnTimer = Math.max(p.invulnTimer, 36);
+          window.sound.shakaUltActivate();
+          triggerRemoteAoeStorm("ling", 6, 36, 90);
+          triggerShake(22, 7.0);
+          skillEffects.push({
+            type: "shockwave",
+            x: p.x,
+            y: p.y,
+            radius: 22,
+            maxRadius: 235,
+            color: "#fbbf24",
+            life: 28,
+            maxLife: 28,
+          });
+          spawnText("🏮 四象歸一・四聖獸齊衝爆裂!", p.x, p.y - 94, "#fde68a", 1.35);
+          for (const e of enemies) {
+            if (e.dead) continue;
+            if (e.x >= cameraX - 20 && e.x <= cameraX + W + 20) {
+              if (currentStage === 6 && window.AirportStage) {
+                window.AirportStage.tryInterruptTeamCombo(e, spawnText, spawnParticles, triggerShake);
+              }
+              const dealt = dealEnemyDamage(e, 66, 0.40);
+              e.hurtTimer = 34;
+              e.knockdownTimer = 30;
+              e.vx = (e.x >= p.x ? 1 : -1) * 6.6;
+              e.vz = 5.4;
+              combo++;
+              comboTimer = 135;
+              score += 880;
+              spawnParticles(e.x, e.y, 32, "#2dd4bf", 10, 4.4, 22);
+              spawnParticles(e.x, e.y, 28, "#ef4444", 10, 4.4, 22);
+              spawnText(`四象歸一 ${dealt}!`, e.x, e.y - 66, "#fde68a", 1.15);
+              if (e.hp <= 0) handleEnemyDefeat(e);
+            }
+          }
+        }
+      } else if (isMagic()) {
+        if (tick % 6 === 0) {
+          spawnParticles(p.x + (Math.random() - 0.5) * 46, p.y, 18 + Math.random() * 34, tick % 12 === 0 ? "#c084fc" : "#9333ea", 1, 1.3, 18);
+        }
+        // Lv.3 Finisher: 《暗影女皇降臨・深淵紫光洪流》 Full-Screen Dark Sorcery Beam!
+        if (unlockedUltLevel >= 3 && p.buffTimer === 1) {
+          p.magicFinisherVisual = 36;
+          p.invulnTimer = Math.max(p.invulnTimer, 36);
+          window.sound.aliceUltDomain();
+          triggerRemoteAoeStorm("magic", 6, 36, 90);
+          triggerShake(22, 7.0);
+          skillEffects.push({
+            type: "shockwave",
+            x: p.x + p.facing * 64,
+            y: p.y,
+            radius: 22,
+            maxRadius: 230,
+            color: "#a855f7",
+            life: 28,
+            maxLife: 28,
+          });
+          spawnText("🔮 暗影女皇降臨・深淵紫光洪流!", p.x, p.y - 94, "#e879f9", 1.35);
+          for (const e of enemies) {
+            if (e.dead) continue;
+            if (e.x >= cameraX - 20 && e.x <= cameraX + W + 20) {
+              if (currentStage === 6 && window.AirportStage) {
+                window.AirportStage.tryInterruptTeamCombo(e, spawnText, spawnParticles, triggerShake);
+              }
+              const dealt = dealEnemyDamage(e, 64, 0.40);
+              e.hurtTimer = 34;
+              e.knockdownTimer = 30;
+              e.vx = (e.x >= p.x ? 1 : -1) * 6.5;
+              e.vz = 5.4;
+              combo++;
+              comboTimer = 135;
+              score += 850;
+              spawnParticles(e.x, e.y, 32, "#c084fc", 18, 4.5, 22);
+              spawnText(`深淵紫光 ${dealt}!`, e.x, e.y - 66, "#e879f9", 1.15);
+              if (e.hp <= 0) handleEnemyDefeat(e);
+            }
+          }
+        }
       } else if (isNightHeronHero()) {
         if (tick % 6 === 0) {
           spawnParticles(p.x + (Math.random() - 0.5) * 42, p.y, 16 + Math.random() * 34, tick % 12 === 0 ? "#38bdf8" : "#e0f2fe", 1, 1.2, 16);
@@ -2302,6 +3015,7 @@
           p.shakaFinisherVisual = 30;
           p.invulnTimer = Math.max(p.invulnTimer, 30);
           window.sound.shakaHeavenDrop();
+          triggerRemoteAoeStorm("shaka", 6, 38, 92);
           triggerShake(20, 6.5);
           skillEffects.push({
             type: "shaka_heaven_pillar",
@@ -2343,9 +3057,9 @@
             skillEffects.push({
               type: "raven_proj",
               kind: "shuriken",
-              x: p.x,
-              y: p.y,
-              z: p.z + 32,
+              x: p.x + Math.cos(ang) * 18,
+              y: p.y + Math.sin(ang) * 6,
+              z: p.z + 52,
               vx: Math.cos(ang) * 7.8,
               vy: Math.sin(ang) * 3.8,
               facing: Math.cos(ang) >= 0 ? 1 : -1,
@@ -2403,7 +3117,7 @@
       if (p.buffTimer === 0) {
         window.sound.isBuff = false;
         spawnText(
-          isNightHeronHero() ? "雨幕消散" : isIronFistHero() ? "蒸氣收斂" : isAlice() ? "言靈領域消散" : isShaka() ? "千手收斂" : isRaven() ? "雙槍收鞘" : isMomo() ? "變回普通型態" : isSamurai() ? "劍氣消散" : "RELOAD READY TO CHARGE",
+          isRose() ? "煉獄收斂" : isLing() ? "四象歸寂" : isMagic() ? "裂界閉合" : isNightHeronHero() ? "雨幕消散" : isIronFistHero() ? "蒸氣收斂" : isAlice() ? "言靈領域消散" : isShaka() ? "千手收斂" : isRaven() ? "雙槍收鞘" : isMomo() ? "變回普通型態" : isSamurai() ? "劍氣消散" : "RELOAD READY TO CHARGE",
           p.x,
           p.y - 68,
           "#94a3b8",
@@ -2442,6 +3156,20 @@
       p.y += dy * speedY;
       if (dx !== 0 || dy !== 0) {
         p.walkFrame += 0.22;
+        if (p.z === 0 && tick % 10 === 0) {
+          particles.push({
+            x: p.x - (dx !== 0 ? dx * 10 : p.facing * 8) + (Math.random() - 0.5) * 6,
+            y: p.y + (Math.random() - 0.5) * 4,
+            z: 2,
+            vx: -(dx || p.facing) * 0.6 + (Math.random() - 0.5) * 0.4,
+            vy: 0,
+            vz: 0.45 + Math.random() * 0.35,
+            color: "rgba(226, 232, 240, 0.55)",
+            size: 3,
+            life: 16,
+            maxLife: 16,
+          });
+        }
       } else {
         p.walkFrame = 0;
       }
@@ -2449,7 +3177,73 @@
 
     // Small Skill (Replaces Jump on K / X / #tbtn-jump)
     if ((justPressed["KeyK"] || justPressed["KeyX"]) && p.skillCd <= 0 && p.skillActiveTimer <= 0 && p.hurtTimer <= 0) {
-      if (isNightHeronHero()) {
+      // Check for Perfect JUST DODGE! (activating [K] right as a nearby enemy winds up a strike!)
+      const dodgedStrike = enemies.some(
+        (e) =>
+          !e.dead &&
+          e.attackTimer >= 10 &&
+          e.attackTimer <= 24 &&
+          Math.abs(e.x - p.x) < 120 &&
+          Math.abs(e.y - p.y) < 52
+      );
+      if (dodgedStrike) {
+        p.reloadGauge = Math.min(100, p.reloadGauge + 22);
+        justDodgeFlashTimer = 16;
+        hitstop = Math.max(hitstop, 5);
+        score += 500;
+        if (window.sound.justDodge) window.sound.justDodge();
+        if (window.shaderFX) {
+          window.shaderFX.pulseAberration(0.6);
+          window.shaderFX.triggerShockwave((p.x - cameraX) / W, (p.y - 30) / H, 0.038);
+        }
+        spawnParticles(p.x, p.y, 28, "#38bdf8", 14, 3.8, 18);
+        spawnText("⚡ JUST DODGE! +22%氣", p.x, p.y - 90, "#38bdf8", 1.2);
+      }
+      if (isFallen()) {
+        // 🪽 墮落天使 — 《審判降臨・骸靈天墜》(Invuln + Remote Sky-Drop Spectral Skull Pillars directly onto distant enemies!)
+        p.skillCd = 180;
+        p.skillMaxCd = 180;
+        p.skillType = "fallen_judgment";
+        p.skillActiveTimer = 28;
+        p.skillImpactDone = false;
+        p.invulnTimer = Math.max(p.invulnTimer, 34);
+        window.sound.shakaUltActivate();
+        spawnText("🪽 審判降臨・骸靈天墜!", p.x, p.y - 78, "#e9d5ff", 1.15);
+      } else if (isRose()) {
+        // 🔥 蘿絲 — 《精神支配・意識侵入》(Invuln Pink Psychic Brainwave Stun 2.0s + Crit Mark!)
+        p.skillCd = 180;
+        p.skillMaxCd = 180;
+        p.skillType = "rose_psychic";
+        p.skillActiveTimer = 26;
+        p.skillImpactDone = false;
+        p.invulnTimer = Math.max(p.invulnTimer, 30);
+        window.sound.aliceVoiceCommand();
+        spawnText("🧠 精神支配・意識侵入!", p.x, p.y - 74, "#f472b6", 1.12);
+      } else if (isLing()) {
+        // 🏮 鈴 — 《北方・玄武鎮海印》(Invuln Tortoise-Serpent Water Shield + 360° Pushback + 4 HP Heal!)
+        p.skillCd = 180;
+        p.skillMaxCd = 180;
+        p.skillType = "ling_xuanwu";
+        p.skillActiveTimer = 26;
+        p.skillImpactDone = false;
+        p.invulnTimer = Math.max(p.invulnTimer, 34);
+        p.hp = Math.min(p.maxHp, p.hp + 4);
+        window.sound.waterSweep();
+        spawnText("🐢 北方・玄武鎮海印! (+4HP)", p.x, p.y - 74, "#38bdf8", 1.12);
+      } else if (isMagic()) {
+        // 🔮 瑪姬 — 《能量・牽引陣》(Invulnerable Purple Mist Backstep + Vortex Pull & Burst!)
+        p.skillCd = 180;
+        p.skillMaxCd = 180;
+        p.skillType = "magic_vortex";
+        p.skillActiveTimer = 26;
+        p.skillImpactDone = false;
+        p.skillStartX = p.x + p.facing * 56;
+        p.skillStartY = p.y;
+        p.skillDirX = dx !== 0 ? (dx > 0 ? 1 : -1) : -p.facing;
+        p.invulnTimer = Math.max(p.invulnTimer, 28);
+        window.sound.aliceVoiceCommand();
+        spawnText("🔮 能量・牽引陣!", p.x, p.y - 74, "#c084fc", 1.12);
+      } else if (isNightHeronHero()) {
         // 👞 夜鷺 — 《鞋跟輕叩・雨燕迴避踢》(Heel Tap -> Water Slide Evade -> Aerial Counter Kick!)
         p.skillCd = 150;
         p.skillMaxCd = 150;
@@ -2639,7 +3433,160 @@
     // Active Small Skill Choreography
     if (p.skillActiveTimer > 0) {
       p.skillActiveTimer--;
-      if (p.skillType === "ground_slam") {
+      if (p.skillType === "fallen_judgment") {
+        if (p.skillActiveTimer % 3 === 0) {
+          spawnParticles(p.x + (Math.random() - 0.5) * 36, p.y, 34, "#e9d5ff", 2, 1.8, 16);
+        }
+        if (p.skillActiveTimer <= 18 && !p.skillImpactDone) {
+          p.skillImpactDone = true;
+          triggerFallenRemoteJudgment(isBuff() ? 4 : 3, isBuff() ? 30 : 22, 88);
+        }
+      } else if (p.skillType === "rose_psychic") {
+        if (p.skillActiveTimer % 3 === 0) {
+          spawnParticles(p.x + p.facing * 42 + (Math.random() - 0.5) * 38, p.y, 28, "#ec4899", 3, 2.4, 16);
+        }
+        if (p.skillActiveTimer <= 15 && !p.skillImpactDone) {
+          p.skillImpactDone = true;
+          triggerShake(8, 3.8);
+          triggerRemoteAoe("rose", isBuff() ? 3 : 2, isBuff() ? 26 : 18, 84);
+          skillEffects.push({
+            type: "shockwave",
+            x: p.x + p.facing * 64,
+            y: p.y,
+            radius: 16,
+            maxRadius: 148,
+            color: "#ec4899",
+            life: 20,
+            maxLife: 20,
+          });
+          const dmg = isBuff() ? 24 : 16;
+          for (const e of enemies) {
+            if (e.dead) continue;
+            const inFront = (e.x - p.x) * p.facing > -36 && Math.abs(e.x - p.x) < 176;
+            if (inFront && Math.abs(e.y - p.y) < 62) {
+              if (currentStage === 6 && window.AirportStage) {
+                window.AirportStage.tryInterruptTeamCombo(e, spawnText, spawnParticles, triggerShake);
+              }
+              const dealt = dealEnemyDamage(e, dmg, 0.25);
+              e.hurtTimer = Math.max(e.hurtTimer, 120); // 2.0s Psychic Stun!
+              e.armorBreakTimer = Math.max(e.armorBreakTimer || 0, 140); // Exposed to Fire Fist crit!
+              combo++;
+              comboTimer = 135;
+              score += dealt * 12;
+              if (!isBuff()) p.reloadGauge = Math.min(100, p.reloadGauge + 6);
+              spawnParticles(e.x, e.y, 44, "#f472b6", 12, 3.2, 20);
+              spawnText(`精神支配 ${dealt}!`, e.x, e.y - 62, "#f472b6", 1.08);
+              if (e.hp <= 0) handleEnemyDefeat(e);
+            }
+          }
+        }
+      } else if (p.skillType === "ling_xuanwu") {
+        if (p.skillActiveTimer % 3 === 0) {
+          spawnParticles(p.x + (Math.random() - 0.5) * 46, p.y, 18, "#38bdf8", 3, 2.2, 16);
+        }
+        if (p.skillActiveTimer <= 13 && !p.skillImpactDone) {
+          p.skillImpactDone = true;
+          triggerRemoteAoe("ling", isBuff() ? 3 : 2, isBuff() ? 26 : 18, 84);
+          window.sound.groundSlam();
+          triggerShake(10, 4.5);
+          skillEffects.push({
+            type: "shockwave",
+            x: p.x,
+            y: p.y,
+            radius: 18,
+            maxRadius: 142,
+            color: "#38bdf8",
+            life: 20,
+            maxLife: 20,
+          });
+          spawnParticles(p.x, p.y, 20, "#7dd3fc", 20, 4.8, 20);
+          const dmg = isBuff() ? 26 : 18;
+          for (const e of enemies) {
+            if (e.dead) continue;
+            if (Math.abs(e.x - p.x) < 140 && Math.abs(e.y - p.y) < 64) {
+              if (currentStage === 6 && window.AirportStage) {
+                window.AirportStage.tryInterruptTeamCombo(e, spawnText, spawnParticles, triggerShake);
+              }
+              const dealt = dealEnemyDamage(e, dmg, 0.2);
+              e.hurtTimer = 26;
+              e.knockdownTimer = 22;
+              e.vx = (e.x >= p.x ? 1 : -1) * 6.5;
+              e.vz = 4.6;
+              combo++;
+              comboTimer = 135;
+              score += dealt * 12;
+              if (!isBuff()) p.reloadGauge = Math.min(100, p.reloadGauge + 5);
+              spawnText(`玄武震退 ${dealt}!`, e.x, e.y - 60, "#7dd3fc", 1.05);
+              if (e.hp <= 0) handleEnemyDefeat(e);
+            }
+          }
+        }
+      } else if (p.skillType === "magic_vortex") {
+        // Phase 1: Graceful purple-mist shadow step away while pulling nearby enemies into vortex center!
+        if (p.skillActiveTimer === 21) {
+          triggerRemoteAoe("magic", isBuff() ? 3 : 2, isBuff() ? 26 : 18, 84);
+        }
+        if (p.skillActiveTimer >= 16 && p.skillActiveTimer <= 22) {
+          p.x += p.skillDirX * 6.5;
+          if (p.skillActiveTimer % 2 === 0) {
+            spawnParticles(p.x, p.y, 26, "#c084fc", 4, 2.2, 16);
+          }
+        }
+        const vx = p.skillStartX;
+        const vy = p.skillStartY;
+        if (p.skillActiveTimer > 7) {
+          // Pull nearby enemies toward vortex center
+          for (const e of enemies) {
+            if (e.dead) continue;
+            const ddx = vx - e.x;
+            const ddy = vy - e.y;
+            if (Math.abs(ddx) < 138 && Math.abs(ddy) < 62) {
+              e.x += ddx * 0.14;
+              e.y += ddy * 0.14;
+              e.hurtTimer = Math.max(e.hurtTimer, 6);
+            }
+          }
+          if (p.skillActiveTimer % 3 === 0) {
+            spawnParticles(vx + (Math.random() - 0.5) * 44, vy, 14, "#a855f7", 3, 2.4, 14);
+          }
+        } else if (!p.skillImpactDone) {
+          // Phase 2: Violet Vortex Explosion!
+          p.skillImpactDone = true;
+          window.sound.groundSlam();
+          triggerShake(10, 4.5);
+          skillEffects.push({
+            type: "shockwave",
+            x: vx,
+            y: vy,
+            radius: 16,
+            maxRadius: 132,
+            color: "#c084fc",
+            life: 20,
+            maxLife: 20,
+          });
+          spawnParticles(vx, vy, 22, "#e879f9", 20, 4.8, 20);
+          const dmg = isBuff() ? 28 : 20;
+          for (const e of enemies) {
+            if (e.dead) continue;
+            if (Math.abs(e.x - vx) < 134 && Math.abs(e.y - vy) < 62) {
+              if (currentStage === 6 && window.AirportStage) {
+                window.AirportStage.tryInterruptTeamCombo(e, spawnText, spawnParticles, triggerShake);
+              }
+              const dealt = dealEnemyDamage(e, dmg, 0.2);
+              e.hurtTimer = 26;
+              e.knockdownTimer = 20;
+              e.vx = (e.x >= vx ? 1 : -1) * 4.8;
+              e.vz = 4.2;
+              combo++;
+              comboTimer = 135;
+              score += dealt * 12;
+              if (!isBuff()) p.reloadGauge = Math.min(100, p.reloadGauge + 5);
+              spawnText(`牽引爆裂 ${dealt}!`, e.x, e.y - 60, "#e879f9", 1.05);
+              if (e.hp <= 0) handleEnemyDefeat(e);
+            }
+          }
+        }
+      } else if (p.skillType === "ground_slam") {
         // Slight forward arc while airborne, then heavy seismic slam!
         if (p.z > 0) {
           p.x += p.facing * 1.8;
@@ -2649,6 +3596,10 @@
           p.skillActiveTimer = Math.min(p.skillActiveTimer, 6);
           window.sound.groundSlam();
           triggerShake(12, 5);
+          if (window.shaderFX) {
+            window.shaderFX.pulseAberration(0.45);
+            window.shaderFX.triggerShockwave((p.x - cameraX) / W, p.y / H, 0.045);
+          }
           skillEffects.push({
             type: "shockwave",
             x: p.x,
@@ -2853,6 +3804,7 @@
         // Execute grab at frame 18 (after float -> 4-arm reach)
         if (!p.skillImpactDone && p.skillActiveTimer <= 17) {
           p.skillImpactDone = true;
+          triggerRemoteAoe("shaka", isBuff() ? 3 : 2, isBuff() ? 28 : 20, 86);
           const grabbed = [];
           for (const e of enemies) {
             if (e.dead) continue;
@@ -2968,16 +3920,148 @@
     const alice = isAlice();
     const ironfist = isIronFistHero();
     const nightheron = isNightHeronHero();
-    if ((justPressed["KeyJ"] || justPressed["KeyZ"] || justPressed["Space"] || touchAtkHeld) && p.attackTimer <= ((samurai || momo || raven || shaka || alice || ironfist || nightheron) && isBuff() ? 5 : 3) && p.hurtTimer <= 0) {
-      p.attackTimer = nightheron ? (isBuff() ? 11 : 13) : ironfist ? (isBuff() ? 12 : 14) : alice ? (isBuff() ? 10 : 12) : shaka ? (isBuff() ? 13 : 15) : raven ? (isBuff() ? 10 : 12) : momo ? (isBuff() ? 12 : 16) : samurai ? (isBuff() ? 11 : 14) : (isBuff() ? 15 : 14);
+    const magic = isMagic();
+    const ling = isLing();
+    const rose = isRose();
+    if ((justPressed["KeyJ"] || justPressed["KeyZ"] || justPressed["Space"] || touchAtkHeld) && p.attackTimer <= ((samurai || momo || raven || shaka || alice || ironfist || nightheron || magic || ling || rose) && isBuff() ? 5 : 3) && p.hurtTimer <= 0) {
+      const fallen = isFallen();
+      p.attackTimer = fallen ? (isBuff() ? 11 : 13) : rose ? (isBuff() ? 10 : 12) : ling ? (isBuff() ? 11 : 13) : magic ? (isBuff() ? 11 : 13) : nightheron ? (isBuff() ? 11 : 13) : ironfist ? (isBuff() ? 12 : 14) : alice ? (isBuff() ? 10 : 12) : shaka ? (isBuff() ? 13 : 15) : raven ? (isBuff() ? 10 : 12) : momo ? (isBuff() ? 12 : 16) : samurai ? (isBuff() ? 11 : 14) : (isBuff() ? 15 : 14);
       p.attackType = (p.attackType + 1) % 3;
       p.attackHitDone = false;
-      if (nightheron) {
+      if (fallen) {
+        if (isBuff()) {
+          window.sound.katanaSlash(p.attackType === 2);
+          // Launch from Fallen Angel's wing/sword sweep height (targetH=112 -> z≈64)!
+          spawnSwordWave(p.x + p.facing * 54, p.y, p.z + 64, p.facing, p.attackType === 2 ? "#c084fc" : "#f8fafc", false, "vfx_proj_fallen", p.attackType === 2);
+          if (unlockedUltLevel >= 1 && p.attackType === 2) {
+            spawnSwordWave(p.x + p.facing * 40, p.y - 6, p.z + 56, p.facing, "#fde047", false, "vfx_proj_fallen", true);
+          }
+          // Lv.2+ Punishing Slash: Combo finisher drops a targeted Remote Sky-Drop Skull Pillar right onto a distant enemy!
+          if (unlockedUltLevel >= 2 && p.attackType === 2) {
+            triggerFallenRemoteJudgment(1, 28, 86);
+          }
+        } else {
+          window.sound.punchSwing();
+          if (p.attackType === 2) {
+            // 3rd Hit: Wing Wind Pressure Wave knocking back a whole row!
+            spawnSwordWave(p.x + p.facing * 52, p.y, p.z + 64, p.facing, "#e2e8f0", false, "vfx_proj_fallen", false);
+            spawnParticles(p.x + p.facing * 52, p.y, p.z + 62, "#f8fafc", 12, 4.0, 16);
+          } else {
+            spawnParticles(p.x + p.facing * 42, p.y, p.z + 60, "#e9d5ff", 6, 3.0, 14);
+          }
+        }
+      } else if (rose) {
+        const fistSprite =
+          isBuff() && unlockedUltLevel >= 3
+            ? "vfx_firefist_lv3"
+            : isBuff() && unlockedUltLevel >= 2
+            ? "vfx_firefist_lv2"
+            : "vfx_firefist_lv1";
+        if (isBuff()) {
+          window.sound.punchHit(true);
+          // Launch directly from Rose's outstretched punching fist (shoulder height z ≈ 64)!
+          spawnSwordWave(p.x + p.facing * 58, p.y, p.z + 64, p.facing, "#f97316", false, fistSprite, unlockedUltLevel >= 2);
+          spawnParticles(p.x + p.facing * 58, p.y, p.z + 64, "#fb923c", 8, 3.2, 14);
+          if (unlockedUltLevel >= 1 && p.attackType === 2) {
+            spawnSwordWave(p.x + p.facing * 44, p.y - 6, p.z + 58, p.facing, "#fbbf24", false, fistSprite, true);
+          }
+          if (unlockedUltLevel >= 2 && p.attackType === 2) {
+            skillEffects.push({
+              type: "shockwave",
+              x: p.x + p.facing * 58,
+              y: p.y,
+              radius: 18,
+              maxRadius: 142,
+              color: "#f97316",
+              life: 18,
+              maxLife: 18,
+            });
+          }
+        } else {
+          window.sound.punchSwing();
+          if (p.attackType === 2) {
+            // 3rd Hit: Blazing Flying Fire Fist straight out of Rose's punching fist!
+            spawnSwordWave(p.x + p.facing * 56, p.y, p.z + 64, p.facing, "#f97316", false, "vfx_firefist_lv1", false);
+            spawnParticles(p.x + p.facing * 56, p.y, p.z + 64, "#fb923c", 10, 3.6, 16);
+          } else {
+            spawnParticles(p.x + p.facing * 46, p.y, p.z + 64, "#f97316", 6, 2.8, 12);
+          }
+        }
+      } else if (ling) {
         if (isBuff()) {
           window.sound.waterSweep();
-          spawnSwordWave(p.x + p.facing * 36, p.y, p.z + 28, p.facing, "#38bdf8", false);
+          const beastColors = ["#f8fafc", "#2dd4bf", "#ef4444"];
+          // Launch from Ling's spirit-summoning palm height (targetH=112 -> z≈58)!
+          spawnSwordWave(p.x + p.facing * 54, p.y, p.z + 58, p.facing, beastColors[p.attackType], false, "vfx_proj_ling", p.attackType === 2);
           if (unlockedUltLevel >= 1) {
-            spawnSwordWave(p.x + p.facing * 26, p.y - 8, p.z + 34, p.facing, "#e0f2fe", false);
+            spawnSwordWave(p.x + p.facing * 40, p.y - 8, p.z + 52, p.facing, "#fbbf24", false, "vfx_proj_ling", true);
+          }
+          if (unlockedUltLevel >= 2 && p.attackType === 2) {
+            skillEffects.push({
+              type: "shockwave",
+              x: p.x + p.facing * 68,
+              y: p.y,
+              radius: 18,
+              maxRadius: 138,
+              color: "#ef4444",
+              life: 18,
+              maxLife: 18,
+            });
+          }
+        } else {
+          if (p.attackType === 0) {
+            // 白虎撲擊
+            window.sound.punchSwing();
+            spawnParticles(p.x + p.facing * 48, p.y, p.z + 54, "#f8fafc", 10, 3.4, 14);
+          } else if (p.attackType === 1) {
+            // 青龍風雷貫穿
+            window.sound.waterSweep();
+            spawnSwordWave(p.x + p.facing * 50, p.y, p.z + 58, p.facing, "#2dd4bf", false, "vfx_proj_ling", false);
+          } else {
+            // 朱雀熾焰爆燃
+            window.sound.katanaSlash();
+            spawnSwordWave(p.x + p.facing * 52, p.y, p.z + 58, p.facing, "#ef4444", false, "vfx_proj_ling", true);
+          }
+        }
+      } else if (magic) {
+        if (isBuff()) {
+          window.sound.aliceVoiceCommand();
+          // Launch from Magic's outstretched dark-magic casting hand (targetH=114 -> z≈62)!
+          spawnSwordWave(p.x + p.facing * 52, p.y, p.z + 62, p.facing, "#c084fc", true, "vfx_proj_magic", true);
+          if (unlockedUltLevel >= 1) {
+            spawnSwordWave(p.x + p.facing * 38, p.y - 8, p.z + 56, p.facing, "#a855f7", false, "vfx_proj_magic", false);
+          }
+          if (unlockedUltLevel >= 2 && p.attackType === 2) {
+            skillEffects.push({
+              type: "shockwave",
+              x: p.x + p.facing * 64,
+              y: p.y,
+              radius: 18,
+              maxRadius: 132,
+              color: "#e879f9",
+              life: 18,
+              maxLife: 18,
+            });
+          }
+        } else {
+          if (p.attackType === 0) {
+            window.sound.shurikenThrow ? window.sound.shurikenThrow() : window.sound.punchSwing();
+            spawnSwordWave(p.x + p.facing * 48, p.y, p.z + 60, p.facing, "#c084fc", false, "vfx_proj_magic", false);
+          } else if (p.attackType === 1) {
+            window.sound.aliceVoiceCommand();
+            spawnSwordWave(p.x + p.facing * 50, p.y, p.z + 60, p.facing, "#a855f7", false, "vfx_proj_magic", false);
+          } else {
+            window.sound.katanaSlash();
+            spawnParticles(p.x + p.facing * 54, p.y, p.z + 58, "#c084fc", 12, 3.6, 16);
+          }
+        }
+      } else if (nightheron) {
+        if (isBuff()) {
+          window.sound.waterSweep();
+          // Launch from Night Heron's kicking foot (mid-high kick z≈48)!
+          spawnSwordWave(p.x + p.facing * 48, p.y, p.z + 48, p.facing, "#38bdf8", false, "vfx_proj_nightheron", true);
+          if (unlockedUltLevel >= 1) {
+            spawnSwordWave(p.x + p.facing * 36, p.y - 8, p.z + 52, p.facing, "#e0f2fe", false, "vfx_proj_nightheron", false);
           }
           if (unlockedUltLevel >= 2 && p.attackType === 2) {
             skillEffects.push({
@@ -2994,7 +4078,8 @@
         } else {
           if (p.attackType === 2) {
             window.sound.waterSweep();
-            spawnSwordWave(p.x + p.facing * 32, p.y, 12, p.facing, "#38bdf8", false);
+            // 3rd-hit sweep kick water blade (foot level z≈34)!
+            spawnSwordWave(p.x + p.facing * 46, p.y, p.z + 34, p.facing, "#38bdf8", false, "vfx_proj_nightheron", false);
           } else {
             window.sound.punchSwing();
           }
@@ -3007,7 +4092,8 @@
             p.ifRocketTimer = 14;
             spawnText("火箭衝拳!", p.x + p.facing * 26, p.y - 64, "#f59e0b", 1.05);
           }
-          spawnSwordWave(p.x + p.facing * 36, p.y, p.z + 30, p.facing, "#f59e0b", false);
+          // Launch from Iron Fist's outstretched heavy punch (shoulder height z≈58)!
+          spawnSwordWave(p.x + p.facing * 52, p.y, p.z + 58, p.facing, "#f59e0b", false, "vfx_proj_ironfist", true);
           if (unlockedUltLevel >= 1 && p.attackType === 1) {
             skillEffects.push({
               type: "shockwave",
@@ -3023,25 +4109,34 @@
         } else {
           window.sound.punchSwing();
           if (p.attackType === 2) {
-            // Signature lunging white-bandage 3rd punch!
+            // Signature lunging white-bandage 3rd punch + Steam Air-Cannon Wave!
             p.x += p.facing * 14;
-            spawnParticles(p.x + p.facing * 28, p.y, 32, "#f8fafc", 10, 3.2, 14);
+            spawnSwordWave(p.x + p.facing * 50, p.y, p.z + 58, p.facing, "#f59e0b", false, "vfx_proj_ironfist", false);
+            spawnParticles(p.x + p.facing * 46, p.y, p.z + 58, "#f8fafc", 10, 3.2, 14);
           }
         }
       } else if (alice) {
         const heavy = p.attackType === 2 || isBuff();
         window.sound.alicePunch(heavy);
         if (isBuff()) {
-          // Crimson-Gold Soundwave Punch Pressure!
-          spawnSlashEffect(p.x + p.facing * 32, p.y, p.z + 32, p.facing, 0, 52, "#e11d48", 10);
-          spawnSwordWave(p.x + p.facing * 34, p.y, p.z + 30, p.facing, "#e11d48", false);
+          // Crimson-Gold Rose-Thorn Soundwave Punch Pressure (aligned to Alice's fist z≈56)!
+          spawnSlashEffect(p.x + p.facing * 36, p.y, p.z + 54, p.facing, 0, 52, "#e11d48", 10);
+          spawnSwordWave(p.x + p.facing * 46, p.y, p.z + 56, p.facing, "#e11d48", false, "vfx_proj_alice", true);
         } else if (p.attackType === 2) {
-          spawnSlashEffect(p.x + p.facing * 26, p.y, p.z + 30, p.facing, 0, 44, "#d4af37", 10);
-          spawnParticles(p.x + p.facing * 32, p.y, p.z + 30, "#e11d48", 10, 3.0, 14);
+          spawnSlashEffect(p.x + p.facing * 32, p.y, p.z + 54, p.facing, 0, 44, "#d4af37", 10);
+          spawnSwordWave(p.x + p.facing * 44, p.y, p.z + 56, p.facing, "#e11d48", false, "vfx_proj_alice", false);
+          spawnParticles(p.x + p.facing * 42, p.y, p.z + 54, "#e11d48", 10, 3.0, 14);
         }
       } else if (shaka) {
+        if (isBuff()) {
+          // Launch Golden Buddha Palm Wave straight from Shaka's outstretched palm (targetH=116 + hover -> z≈66)!
+          spawnSwordWave(p.x + p.facing * 58, p.y, p.z + 66, p.facing, "#fbbf24", false, "vfx_proj_shaka", p.attackType === 2);
+        }
         if (p.attackType === 2) {
           window.sound.shakaClap();
+          if (!isBuff()) {
+            spawnSwordWave(p.x + p.facing * 56, p.y, p.z + 60, p.facing, "#fbbf24", false, "vfx_proj_shaka", false);
+          }
           skillEffects.push({
             type: "shockwave",
             x: p.x + p.facing * (isBuff() ? 78 : 54),
@@ -3067,9 +4162,9 @@
             skillEffects.push({
               type: "raven_proj",
               kind: "bullet",
-              x: p.x + p.facing * (24 + b * 10),
+              x: p.x + p.facing * (34 + b * 10),
               y: p.y + (b === 0 ? -5 : 5),
-              z: p.z + (b === 0 ? 36 : 30),
+              z: p.z + (b === 0 ? 58 : 52),
               vx: p.facing * 14.5,
               vy: 0,
               facing: p.facing,
@@ -3082,17 +4177,17 @@
             });
           }
           // Muzzle flash sparks
-          spawnParticles(p.x + p.facing * 30, p.y, p.z + 34, "#fcd34d", 6, 3.0, 10);
-          // Lv.2+: Every 2nd volley also unleashes twin angled Kunai!
+          spawnParticles(p.x + p.facing * 38, p.y, p.z + 55, "#fcd34d", 6, 3.0, 10);
+          // Lv.2+: Every 2nd volley also unleashes angled Poison Kunai Barrage!
           if (unlockedUltLevel >= 2 && p.attackType === 2) {
             window.sound.throwingKnife();
             for (const vyOff of [-2.4, 2.4]) {
               skillEffects.push({
                 type: "raven_proj",
                 kind: "knife",
-                x: p.x + p.facing * 22,
+                x: p.x + p.facing * 36,
                 y: p.y,
-                z: p.z + 32,
+                z: p.z + 54,
                 vx: p.facing * 10.5,
                 vy: vyOff,
                 facing: p.facing,
@@ -3106,16 +4201,16 @@
             }
           }
         } else if (p.attackType === 2) {
-          // 3rd Hit Finisher: Twin Thigh Throwing Knives (with Poison!)
+          // 3rd Hit Finisher: Poison Kunai Barrage from Raven's throwing hand (z≈54)!
           p.attackHitDone = true;
           window.sound.throwingKnife();
           for (const vyOff of [-1.2, 1.2]) {
             skillEffects.push({
               type: "raven_proj",
               kind: "knife",
-              x: p.x + p.facing * 20,
+              x: p.x + p.facing * 36,
               y: p.y + vyOff * 3,
-              z: p.z + 32,
+              z: p.z + 54,
               vx: p.facing * 9.8,
               vy: vyOff,
               facing: p.facing,
@@ -3127,23 +4222,41 @@
               maxLife: 24,
             });
           }
-          spawnSlashEffect(p.x + p.facing * 20, p.y, p.z + 32, p.facing, 0, 36, "#a855f7", 9);
+          spawnSlashEffect(p.x + p.facing * 32, p.y, p.z + 54, p.facing, 0, 36, "#a855f7", 9);
+          // Leave lingering Poison Shadow Mist in front of Raven on 3rd-hit kunai throw!
+          const existingMistsR = skillEffects.filter((fx) => fx.type === "mist_cloud");
+          if (existingMistsR.length >= 3) {
+            const oldIdx = skillEffects.indexOf(existingMistsR[0]);
+            if (oldIdx >= 0) skillEffects.splice(oldIdx, 1);
+          }
+          skillEffects.push({
+            type: "mist_cloud",
+            x: p.x + p.facing * 72,
+            y: p.y,
+            isBlood: false,
+            isShadow: true,
+            scale: 0.78,
+            life: 105,
+            maxLife: 105,
+            tickTimer: 12,
+          });
         } else {
           // 1st & 2nd Hit: Fast Assassin Dagger Slashes!
           window.sound.daggerSlash();
           const ang = p.attackType === 0 ? -0.25 : 0.25;
-          spawnSlashEffect(p.x + p.facing * 22, p.y, p.z + 32, p.facing, ang, 40, p.attackType === 0 ? "#e2e8f0" : "#d4af37", 9);
+          spawnSlashEffect(p.x + p.facing * 26, p.y, p.z + 52, p.facing, ang, 40, p.attackType === 0 ? "#e2e8f0" : "#d4af37", 9);
         }
       } else if (momo) {
         if (isBuff()) {
           // VAMPIRE LONG-CLAW SLASH! (3 parallel crimson fingernail rake arcs!)
           window.sound.vampireClaw();
           const clawR = unlockedUltLevel >= 1 ? 62 : 48;
-          spawnSlashEffect(p.x + p.facing * 24, p.y - 6, p.z + 36, p.facing, -0.22, clawR, "#ef4444", 11);
-          spawnSlashEffect(p.x + p.facing * 28, p.y, p.z + 30, p.facing, 0, clawR + 4, "#fb7185", 11);
-          spawnSlashEffect(p.x + p.facing * 24, p.y + 6, p.z + 24, p.facing, 0.22, clawR, "#dc2626", 11);
-          if (unlockedUltLevel >= 1) {
-            spawnSwordWave(p.x + p.facing * 32, p.y, p.z + 28, p.facing, "#ef4444", true);
+          spawnSlashEffect(p.x + p.facing * 28, p.y - 6, p.z + 56, p.facing, -0.22, clawR, "#ef4444", 11);
+          spawnSlashEffect(p.x + p.facing * 32, p.y, p.z + 52, p.facing, 0, clawR + 4, "#fb7185", 11);
+          spawnSlashEffect(p.x + p.facing * 28, p.y + 6, p.z + 48, p.facing, 0.22, clawR, "#dc2626", 11);
+          if (unlockedUltLevel >= 1 || p.attackType === 2) {
+            // Crimson Blood-Claw & Bat Wave straight from Momo's claw swipe (z≈54)!
+            spawnSwordWave(p.x + p.facing * 44, p.y, p.z + 54, p.facing, "#ef4444", true, "vfx_proj_momo", unlockedUltLevel >= 2);
           }
         } else {
           // NORMAL ATTACK: PEPPER SPRAY MIST CONE! (防狼噴霧)
@@ -3162,6 +4275,25 @@
               size: 4 + Math.floor(Math.random() * 5),
               life: 16 + Math.floor(Math.random() * 10),
               maxLife: 26,
+            });
+          }
+          if (p.attackType === 2) {
+            // 3rd-hit Pepper Spray leaves a lingering spicy Pepper Mist Cloud in front of Momo!
+            const existingMistsM = skillEffects.filter((fx) => fx.type === "mist_cloud");
+            if (existingMistsM.length >= 3) {
+              const oldIdx = skillEffects.indexOf(existingMistsM[0]);
+              if (oldIdx >= 0) skillEffects.splice(oldIdx, 1);
+            }
+            skillEffects.push({
+              type: "mist_cloud",
+              x: p.x + p.facing * 68,
+              y: p.y,
+              isBlood: false,
+              isShadow: false,
+              scale: 0.78,
+              life: 105,
+              maxLife: 105,
+              tickTimer: 12,
             });
           }
         }
@@ -3196,6 +4328,11 @@
         }
       } else {
         window.sound.punchSwing();
+        if (isBuff() || p.attackType === 2) {
+          // Mustache Hero: Golden Armored Power-Fist Shockwave straight from his fist (z≈56)!
+          spawnSwordWave(p.x + p.facing * 50, p.y, p.z + 56, p.facing, "#fbbf24", false, "vfx_proj_mustache", isBuff());
+          spawnParticles(p.x + p.facing * 48, p.y, p.z + 56, "#fde047", 8, 3.2, 14);
+        }
       }
     }
 
@@ -3275,15 +4412,18 @@
     const alice = isAlice();
     const ironfist = isIronFistHero();
     const nightheron = isNightHeronHero();
+    const magic = isMagic();
+    const ling = isLing();
+    const rose = isRose();
     // Unlocked New Move massively expands Ultimate AoE reach!
     const ultRangeBoostX = buff && unlockedUltLevel >= 1 ? (unlockedUltLevel >= 2 ? 54 : 38) : 0;
     const ultRangeBoostY = buff && unlockedUltLevel >= 1 ? (unlockedUltLevel >= 2 ? 22 : 16) : 0;
-    const reachX = (nightheron ? (buff ? 104 : 76) : ironfist ? (buff ? 102 : 70) : alice ? (buff ? 92 : 66) : shaka ? (buff ? 168 : 118) : raven ? 60 : momo ? (buff ? 84 : 88) : samurai ? (buff ? 84 : 66) : (buff ? 68 : 48)) + ultRangeBoostX;
-    const reachY = (nightheron ? (buff ? 40 : 30) : ironfist ? (buff ? 40 : 30) : alice ? (buff ? 38 : 28) : shaka ? (buff ? 52 : 36) : raven ? 28 : momo ? (buff ? 36 : 32) : samurai ? (buff ? 34 : 28) : (buff ? 30 : 24)) + ultRangeBoostY;
+    const reachX = (rose ? (buff ? 142 : 98) : ling ? (buff ? 152 : 116) : magic ? (buff ? 148 : 112) : nightheron ? (buff ? 104 : 76) : ironfist ? (buff ? 102 : 70) : alice ? (buff ? 92 : 66) : shaka ? (buff ? 168 : 118) : raven ? 60 : momo ? (buff ? 84 : 88) : samurai ? (buff ? 84 : 66) : (buff ? 68 : 48)) + ultRangeBoostX;
+    const reachY = (rose ? (buff ? 46 : 34) : ling ? (buff ? 48 : 38) : magic ? (buff ? 46 : 36) : nightheron ? (buff ? 40 : 30) : ironfist ? (buff ? 40 : 30) : alice ? (buff ? 38 : 28) : shaka ? (buff ? 52 : 36) : raven ? 28 : momo ? (buff ? 36 : 32) : samurai ? (buff ? 34 : 28) : (buff ? 30 : 24)) + ultRangeBoostY;
     let hitAnything = false;
 
     // Trigger Mustache's automatic rapid multi-hit punch combo (or Alice Lv.2 Brass Knuckle Flurry!)
-    if ((!samurai && !momo && !raven && !shaka && !alice && !ironfist && !nightheron && buff && unlockedUltLevel >= 1) || (alice && buff && unlockedUltLevel >= 2)) {
+    if ((!samurai && !momo && !raven && !shaka && !alice && !ironfist && !nightheron && !magic && !ling && !rose && buff && unlockedUltLevel >= 1) || (alice && buff && unlockedUltLevel >= 2)) {
       p.flurryHitsLeft = unlockedUltLevel >= 2 ? 3 : 2;
       p.flurryTimer = 4;
     }
@@ -3430,8 +4570,29 @@
           combo++;
           comboTimer = 135;
           score += 160;
-          spawnParticles(e.x, e.y, 28, w.color || "#38bdf8", 7, 3, 14);
-          spawnText(w.lifesteal ? "血爪波 14" : "劍氣 14", e.x, e.y - 52, w.color || "#38bdf8", 0.95);
+          spawnParticles(e.x, e.y, w.z || 28, w.color || "#38bdf8", 7, 3, 14);
+          const waveLabel = w.lifesteal
+            ? "血爪波 14"
+            : w.spriteKey && w.spriteKey.startsWith("vfx_firefist")
+            ? "火拳 14"
+            : w.spriteKey === "vfx_proj_magic"
+            ? "黑魔法 14"
+            : w.spriteKey === "vfx_proj_nightheron"
+            ? "水刃 14"
+            : w.spriteKey === "vfx_proj_fallen"
+            ? "羽翼風壓 14"
+            : w.spriteKey === "vfx_proj_ling"
+            ? "四象波 14"
+            : w.spriteKey === "vfx_proj_ironfist"
+            ? "蒸氣拳壓 14"
+            : w.spriteKey === "vfx_proj_shaka"
+            ? "如來掌 14"
+            : w.spriteKey === "vfx_proj_alice"
+            ? "言靈音波 14"
+            : w.spriteKey === "vfx_proj_mustache"
+            ? "黃金拳壓 14"
+            : "劍氣 14";
+          spawnText(waveLabel, e.x, e.y - 52, w.color || "#38bdf8", 0.95);
           if (w.lifesteal && player) {
             player.hp = Math.min(player.maxHp, player.hp + 5);
             window.sound.lifestealChime();
@@ -3452,7 +4613,46 @@
     for (let i = skillEffects.length - 1; i >= 0; i--) {
       const fx = skillEffects[i];
       fx.life--;
-      if (fx.type === "shockwave") {
+      if (fx.type === "sky_drop_skull") {
+        if (fx.delay > 0) {
+          fx.delay--;
+        } else {
+          const phaseLife = fx.life;
+          // Impact moment right as the strike hits!
+          if (!fx.impacted && phaseLife <= 21) {
+            const st = REMOTE_AOE_STYLES[fx.style] || REMOTE_AOE_STYLES.fallen;
+            fx.impacted = true;
+            window.sound.groundSlam();
+            triggerShake(11, 4.6);
+            if (window.shaderFX) {
+              window.shaderFX.pulseAberration(0.45);
+              window.shaderFX.triggerShockwave((fx.x - cameraX) / W, fx.y / H, 0.046);
+            }
+            spawnParticles(fx.x, fx.y, 18, st.color, 14, 4.2, 20);
+            spawnParticles(fx.x, fx.y, 26, "#ffffff", 10, 3.6, 18);
+            for (const e of enemies) {
+              if (e.dead) continue;
+              if (Math.abs(e.x - fx.x) < fx.radius && Math.abs(e.y - fx.y) < 48) {
+                if (currentStage === 6 && window.AirportStage) {
+                  window.AirportStage.tryInterruptTeamCombo(e, spawnText, spawnParticles, triggerShake);
+                }
+                const dealt = dealEnemyDamage(e, fx.dmg, 0.35);
+                e.hurtTimer = 26;
+                e.knockdownTimer = 22;
+                e.armorBreakTimer = Math.max(e.armorBreakTimer || 0, 90);
+                e.vx = (e.x >= fx.x ? 1 : -1) * 3.8;
+                e.vz = 5.2;
+                combo++;
+                comboTimer = 135;
+                score += dealt * 14;
+                if (player && !isBuff()) player.reloadGauge = Math.min(100, player.reloadGauge + 6);
+                spawnText(`${st.label} ${dealt}!`, e.x, e.y - 62, st.color, 1.12);
+                if (e.hp <= 0) handleEnemyDefeat(e);
+              }
+            }
+          }
+        }
+      } else if (fx.type === "shockwave") {
         const t = 1 - fx.life / fx.maxLife;
         fx.radius = 18 + (fx.maxRadius - 18) * (1 - Math.pow(1 - t, 2));
       } else if (fx.type === "delayed_iaido") {
@@ -3506,17 +4706,22 @@
         fx.tickTimer--;
         if (fx.tickTimer <= 0) {
           fx.tickTimer = 22;
+          const mistRx = 72 * (fx.scale || 1);
+          const mistRy = 38 * (fx.scale || 1);
           for (const e of enemies) {
             if (e.dead) continue;
-            if (Math.abs(e.x - fx.x) < 72 && Math.abs(e.y - fx.y) < 38) {
+            if (Math.abs(e.x - fx.x) < mistRx && Math.abs(e.y - fx.y) < mistRy) {
               const dmg = fx.isBlood ? 8 : 5;
               dealEnemyDamage(e, dmg);
               e.hurtTimer = Math.max(e.hurtTimer, 18);
               combo++;
               comboTimer = 135;
               score += dmg * 10;
-              spawnParticles(e.x, e.y, 26, fx.isBlood ? "#ef4444" : "#fb923c", 4, 2.0, 14);
-              spawnText(fx.isBlood ? `血霧 ${dmg}` : `防狼霧 ${dmg}`, e.x, e.y - 52, fx.isBlood ? "#fb7185" : "#fdba74", 0.9);
+              const mistCol = fx.isShadow ? "#c084fc" : fx.isBlood ? "#ef4444" : "#fb923c";
+              const mistTxt = fx.isShadow ? `毒霧 ${dmg}` : fx.isBlood ? `血霧 ${dmg}` : `辣椒霧 ${dmg}`;
+              const mistTxtCol = fx.isShadow ? "#d8b4fe" : fx.isBlood ? "#fb7185" : "#fdba74";
+              spawnParticles(e.x, e.y, 26, mistCol, 4, 2.0, 14);
+              spawnText(mistTxt, e.x, e.y - 52, mistTxtCol, 0.9);
               if (fx.isBlood && player) {
                 player.hp = Math.min(player.maxHp, player.hp + 4);
                 window.sound.lifestealChime();
@@ -3607,19 +4812,32 @@
       for (const item of wave.list) {
         enemies.push(createEnemy(item.type, item.x, item.y));
       }
+      let bossLabel = "";
       if (wave.list.some((i) => i.type === "wt_boss")) {
         const wt = window.WorldTour ? window.WorldTour.getStage(currentStage) : null;
-        spawnText((wt && wt.bossBanner) || "STAGE BOSS 登場！", cameraLockX + W / 2, 128, "#f59e0b", 1.2);
+        bossLabel = (wt && wt.bossBanner) || "STAGE BOSS 登場！";
+        spawnText(bossLabel, cameraLockX + W / 2, 128, "#f59e0b", 1.2);
       } else if (wave.list.some((i) => i.type === "boss_train_mechanic")) {
-        spawnText("山線特快 BOSS「緩衝拳機兵」啟動！全車警戒！", cameraLockX + W / 2, 128, "#f59e0b", 1.2);
+        bossLabel = "山線特快 BOSS「緩衝拳機兵」啟動！全車警戒！";
+        spawnText(bossLabel, cameraLockX + W / 2, 128, "#f59e0b", 1.2);
       } else if (wave.list.some((i) => i.type === "boss_89_king")) {
-        spawnText("大稻埕 8+9 角頭老大登場！支援輸贏啦！", cameraLockX + W / 2, 128, "#f59e0b", 1.2);
+        bossLabel = "大稻埕 8+9 角頭老大登場！支援輸贏啦！";
+        spawnText(bossLabel, cameraLockX + W / 2, 128, "#f59e0b", 1.2);
       } else if (wave.list.some((i) => i.type === "genex_boss")) {
-        spawnText("基因研究者 DR. GENEX 降臨!", cameraLockX + W / 2, 128, "#ef4444", 1.3);
+        bossLabel = "基因研究者 DR. GENEX 降臨!";
+        spawnText(bossLabel, cameraLockX + W / 2, 128, "#ef4444", 1.3);
       } else if (wave.list.some((i) => i.type === "boss")) {
-        spawnText("FINAL BOSS FIGHT!", cameraLockX + W / 2, 130, "#ef4444", 1.4);
+        bossLabel = "FINAL BOSS FIGHT!";
+        spawnText(bossLabel, cameraLockX + W / 2, 130, "#ef4444", 1.4);
       } else if (wave.list.some((i) => i.type === "miniboss")) {
-        spawnText("MINI-BOSS APPEARS!", cameraLockX + W / 2, 130, "#fbbf24", 1.35);
+        bossLabel = "MINI-BOSS APPEARS!";
+        spawnText(bossLabel, cameraLockX + W / 2, 130, "#fbbf24", 1.35);
+      }
+      if (bossLabel) {
+        bossWarningTimer = 85;
+        bossWarningName = bossLabel;
+        if (window.sound.bossWarning) window.sound.bossWarning();
+        if (window.sound.setBossTension) window.sound.setBossTension(true);
       }
     }
 
@@ -3630,10 +4848,35 @@
         cameraLocked = false;
         activeWaveIndex++;
         if (activeWaveIndex >= waves.length) {
-          // Stage Clear!
+          // Stage Clear! Trigger Dramatic K.O. Slow-Motion + Compute Arcade Summary & Save Progress!
           gameState = STATE.STAGE_CLEAR;
-          stageClearTimer = 150;
+          stageClearTimer = 360;
+          koSlowMoTimer = 34;
+          koFlashTimer = 38;
+          if (window.sound.setBossTension) window.sound.setBossTension(false);
+          if (window.sound.koFinish) window.sound.koFinish();
+          if (window.shaderFX) {
+            window.shaderFX.pulseAberration(0.95);
+            window.shaderFX.triggerShockwave(0.5, 0.5, 0.065);
+          }
           window.sound.stageClear();
+
+          const elapsedSec = Math.max(1, Math.round((tick - stageStartTick) / 60));
+          const noDamageBonus = stageDamageTaken === 0 ? 1500 : 0;
+          const timeBonus = Math.max(0, 1200 - elapsedSec * 10);
+          score += noDamageBonus + timeBonus;
+          const rank =
+            stageDamageTaken === 0 || (maxCombo >= 15 && elapsedSec <= 65)
+              ? "S"
+              : stageDamageTaken <= 45 && maxCombo >= 8
+              ? "A"
+              : stageDamageTaken <= 90
+              ? "B"
+              : "C";
+          saveStageProgress(currentStage, score, rank, maxCombo);
+          if (window.sound.stageRankFanfare) window.sound.stageRankFanfare(rank === "S");
+
+          const wtCur = window.WorldTour ? window.WorldTour.getStage(currentStage) : null;
           const clearLabels = {
             1: "HARBOUR CLEARED!",
             2: "RESTROOM CLEARED! 前往機場《末班機》!",
@@ -3642,14 +4885,24 @@
             4: "地下一層突破！逃離沼氣前往第三層!",
             5: "基因研究者擊破！生化島解放!",
             7: "大稻埕角頭擊破！迪化街恢復和平!",
+            8: "山線特快全線突破！",
           };
-          spawnText(
-            clearLabels[currentStage] || "STAGE CLEARED!",
-            cameraX + W / 2,
-            150,
-            "#fcd34d",
-            1.25
-          );
+          stageClearSummary = {
+            title: (wtCur && `${wtCur.hudName} 突破！`) || clearLabels[currentStage] || "STAGE CLEARED!",
+            timeSec: elapsedSec,
+            maxCombo,
+            briskets: stageBrisketsEaten,
+            noDamageBonus,
+            timeBonus,
+            rank,
+            hasNext:
+              currentStage === 1 ||
+              currentStage === 2 ||
+              currentStage === 3 ||
+              currentStage === 4 ||
+              Boolean(wtCur && wtCur.nextId),
+          };
+          spawnText(stageClearSummary.title, cameraX + W / 2, 150, "#fcd34d", 1.25);
         } else {
           goArrowTimer = 150;
         }
@@ -3842,6 +5095,7 @@
             e.attackHitDone = true;
             const dmg = isBuff() ? Math.ceil(e.damage * 0.5) : e.damage;
             p.hp = Math.max(0, p.hp - dmg);
+            stageDamageTaken += dmg;
             p.hurtTimer = 14;
             p.invulnTimer = 36;
             combo = 0;
@@ -3933,6 +5187,7 @@
         player.eatTimer = 28;
         score += 250;
         brisketEatenCount++;
+        stageBrisketsEaten++;
         window.sound.brisketEat();
         spawnParticles(player.x, player.y, 26, "#4ade80", 12, 2.5, 24);
         spawnText(`+${heal} HP!`, player.x, player.y - 62, "#4ade80", 1.1);
@@ -3958,6 +5213,117 @@
       pt.life--;
       if (pt.life <= 0) particles.splice(i, 1);
     }
+  }
+
+  // Regional Atmospheric Weather & Ambient Particles (Sakura, Jiufen Rain, Neon Motes, Sunset Dust, Bio Spores)
+  function updateAmbientParticles() {
+    const wt = window.WorldTour ? window.WorldTour.getStage(currentStage) : null;
+    let mode = "mote";
+    if (wt && wt.region === "japan") mode = "sakura";
+    else if (currentStage === 102) mode = "rain";
+    else if (wt && (wt.region === "malaysia" || wt.region === "singapore" || wt.region === "thailand" || wt.region === "vietnam")) mode = "sunset";
+    else if (currentStage === 3 || currentStage === 4 || currentStage === 5) mode = "spore";
+    else if (wt && wt.region === "taiwan") mode = "neon";
+
+    const maxCount = mode === "rain" ? 42 : 22;
+    if (ambientParticles.length < maxCount && tick % (mode === "rain" ? 2 : 6) === 0) {
+      if (mode === "sakura") {
+        ambientParticles.push({
+          mode,
+          x: Math.random() * (W + 80),
+          y: -8,
+          vx: -0.7 - Math.random() * 0.7,
+          vy: 0.65 + Math.random() * 0.55,
+          size: 3 + Math.random() * 2,
+          phase: Math.random() * Math.PI * 2,
+          color: Math.random() < 0.5 ? "#fbcfe8" : "#f9a8d4",
+        });
+      } else if (mode === "rain") {
+        ambientParticles.push({
+          mode,
+          x: Math.random() * (W + 100),
+          y: -12,
+          vx: -1.8,
+          vy: 7.5 + Math.random() * 2.5,
+          size: 10 + Math.random() * 6,
+          phase: 0,
+          color: "rgba(186, 230, 253, 0.42)",
+        });
+      } else if (mode === "sunset") {
+        ambientParticles.push({
+          mode,
+          x: Math.random() * W,
+          y: 30 + Math.random() * (H - 60),
+          vx: -0.35 - Math.random() * 0.35,
+          vy: -0.15 + Math.random() * 0.3,
+          size: 2 + Math.random() * 2,
+          phase: Math.random() * Math.PI * 2,
+          color: Math.random() < 0.5 ? "rgba(253, 224, 71, 0.55)" : "rgba(251, 146, 60, 0.50)",
+        });
+      } else if (mode === "spore") {
+        ambientParticles.push({
+          mode,
+          x: Math.random() * W,
+          y: H - 20 - Math.random() * 140,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: -0.35 - Math.random() * 0.35,
+          size: 2 + Math.random() * 2,
+          phase: Math.random() * Math.PI * 2,
+          color: "rgba(74, 222, 128, 0.52)",
+        });
+      } else {
+        ambientParticles.push({
+          mode: "neon",
+          x: Math.random() * W,
+          y: 25 + Math.random() * (H - 70),
+          vx: -0.25 - Math.random() * 0.35,
+          vy: -0.18 + Math.random() * 0.36,
+          size: 2 + Math.random() * 1.5,
+          phase: Math.random() * Math.PI * 2,
+          color: Math.random() < 0.5 ? "rgba(56, 189, 248, 0.55)" : "rgba(251, 191, 36, 0.50)",
+        });
+      }
+    }
+
+    for (let i = ambientParticles.length - 1; i >= 0; i--) {
+      const ap = ambientParticles[i];
+      ap.phase += 0.08;
+      ap.x += ap.vx + (ap.mode === "sakura" ? Math.sin(ap.phase) * 0.45 : 0);
+      ap.y += ap.vy;
+      if (ap.x < -30 || ap.x > W + 110 || ap.y < -30 || ap.y > H + 24) {
+        ambientParticles.splice(i, 1);
+      }
+    }
+  }
+
+  function drawAmbientParticles() {
+    if (!ambientParticles.length) return;
+    ctx.save();
+    for (const ap of ambientParticles) {
+      if (ap.mode === "rain") {
+        ctx.strokeStyle = ap.color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(ap.x, ap.y);
+        ctx.lineTo(ap.x + ap.vx * 1.4, ap.y + ap.size);
+        ctx.stroke();
+      } else if (ap.mode === "sakura") {
+        ctx.save();
+        ctx.translate(ap.x, ap.y);
+        ctx.rotate(ap.phase);
+        ctx.fillStyle = ap.color;
+        ctx.globalAlpha = 0.82;
+        ctx.fillRect(-ap.size / 2, -ap.size / 3, ap.size, ap.size * 0.65);
+        ctx.restore();
+      } else {
+        ctx.globalAlpha = 0.55 + Math.sin(ap.phase) * 0.35;
+        ctx.fillStyle = ap.color;
+        ctx.beginPath();
+        ctx.arc(ap.x, ap.y, ap.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
   function updateFloatingTexts() {
@@ -3994,6 +5360,7 @@
     if (gameState === STATE.WORLD_MAP) {
       drawWorldMapOverlay();
       ctx.restore();
+      if (window.shaderFX) window.shaderFX.render(false);
       return;
     }
 
@@ -4069,7 +5436,27 @@
     drawSlashEffectsAndWaves();
     drawEnemyProjectiles();
     drawParticles();
+    drawAmbientParticles();
     drawFloatingTexts();
+
+    if (justDodgeFlashTimer > 0) {
+      ctx.fillStyle = `rgba(56, 189, 248, ${(justDodgeFlashTimer / 16) * 0.24})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    if (koFlashTimer > 0) {
+      const a = Math.min(1, koFlashTimer / 28);
+      ctx.fillStyle = `rgba(255, 255, 255, ${a * 0.45})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(0,0,0,0.9)";
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = "#fef08a";
+      ctx.font = "900 46px monospace";
+      ctx.fillText("K.O.!", W / 2, H / 2 - 6);
+      ctx.restore();
+    }
 
     if (currentStage === 4) {
       window.BioArt.drawToxicGasOverlay(ctx, W, H, tick);
@@ -4094,11 +5481,13 @@
     if (gameState !== STATE.TITLE) drawHUD();
 
     if (gameState === STATE.TITLE) drawTitleOverlay();
+    if (gameState === STATE.STAGE_CLEAR && stageClearSummary && koFlashTimer <= 10) drawStageClearOverlay();
     if (gameState === STATE.PAUSED) drawCenterBanner("PAUSED", "Press P to resume");
     if (gameState === STATE.GAME_OVER) drawCenterBanner("GAME OVER", "Press ENTER or Click to retry");
     if (gameState === STATE.VICTORY) drawVictoryOverlay();
 
     ctx.restore();
+    if (window.shaderFX) window.shaderFX.render(Boolean(player && isBuff()));
   }
 
   function drawTiledLabBackground(spriteKey, fallbackFn) {
@@ -4165,8 +5554,257 @@
   }
 
   function drawWorldMapOverlay() {
-    // Smooth vertical camera pan: 0 for Island 1 / Bio-Island, 326 when selecting Taiwan Island below!
-    const targetMapY = selectedIsland === 2 ? 326 : 0;
+    // Full-Screen Interactive Southeast Asia 4-Country Tour Map (24 Stages!)
+    if (worldMapView === "sea") {
+      ctx.fillStyle = "#0b1120";
+      ctx.fillRect(0, 0, W, H);
+      const grad = ctx.createRadialGradient(W / 2, H / 2, 30, W / 2, H / 2, 340);
+      grad.addColorStop(0, "rgba(245, 158, 11, 0.14)");
+      grad.addColorStop(1, "rgba(11, 17, 32, 0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = "rgba(9, 13, 22, 0.90)";
+      ctx.fillRect(0, 0, W, 38);
+      ctx.fillStyle = "rgba(30, 41, 59, 0.95)";
+      ctx.fillRect(8, 7, 118, 24);
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(8, 7, 118, 24);
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "bold 10px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("◀ 返回世界地圖", 67, 23);
+
+      ctx.fillStyle = "#fcd34d";
+      ctx.font = "900 12px monospace";
+      ctx.fillText("🌏 東南亞巡迴 — 4 國 24 關任選開戰！", W / 2, 23);
+
+      ctx.fillStyle = "rgba(180, 83, 9, 0.92)";
+      ctx.fillRect(518, 7, 114, 24);
+      ctx.strokeStyle = "#fcd34d";
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(518, 7, 114, 24);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 10px monospace";
+      ctx.fillText("切換 🇹🇼 台灣 ▶", 575, 23);
+
+      const countries = [
+        { label: "🇲🇾 馬來西亞", base: 301, color: "#eab308" },
+        { label: "🇸🇬 新加坡", base: 401, color: "#ef4444" },
+        { label: "🇹🇭 泰國", base: 501, color: "#f59e0b" },
+        { label: "🇻🇳 越南", base: 601, color: "#f43f5e" },
+      ];
+      const tabW = (W - 24) / 4;
+      countries.forEach((c, idx) => {
+        const tx = 12 + idx * tabW;
+        const active = idx === seaSelectedCountry;
+        let clearedCnt = 0;
+        for (let k = 0; k < 6; k++) if (getStageRecord(c.base + k)) clearedCnt++;
+        ctx.fillStyle = active ? "rgba(30, 41, 59, 0.98)" : "rgba(15, 23, 42, 0.72)";
+        ctx.fillRect(tx + 2, 44, tabW - 4, 28);
+        ctx.strokeStyle = active ? c.color : "#334155";
+        ctx.lineWidth = active ? 2 : 1.2;
+        ctx.strokeRect(tx + 2, 44, tabW - 4, 28);
+        ctx.fillStyle = active ? "#ffffff" : "#94a3b8";
+        ctx.font = "bold 10px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(`${c.label} (${clearedCnt}/6)`, tx + tabW / 2, 62);
+      });
+
+      const curC = countries[seaSelectedCountry] || countries[0];
+      for (let i = 0; i < 6; i++) {
+        const stId = curC.base + i;
+        const st = window.WorldTour ? window.WorldTour.getStage(stId) : null;
+        if (st && window.sprites && window.sprites.ensureRaw) {
+          window.sprites.ensureRaw(st.bgKey, st.bgSrc);
+        }
+        const rec = getStageRecord(stId);
+        const col = i % 3;
+        const row = Math.floor(i / 3);
+        const sx = 18 + col * 204;
+        const sy = 88 + row * 124;
+
+        ctx.save();
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(sx, sy, 194, 112);
+
+        // Real Scenic Stage Background Thumbnail inside each SEA Card!
+        const thumb = st && window.sprites ? window.sprites.get(st.bgKey) : null;
+        if (thumb && thumb.width > 0) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(sx, sy, 194, 112);
+          ctx.clip();
+          const cropW = Math.min(thumb.width, Math.round(thumb.height * (194 / 112)));
+          const cropX = Math.max(0, Math.round((thumb.width - cropW) * 0.45));
+          ctx.drawImage(thumb, cropX, 0, cropW, thumb.height, sx, sy, 194, 112);
+          ctx.restore();
+        }
+
+        // Rich dark gradient scrim for crisp arcade legibility
+        const scrim = ctx.createLinearGradient(sx, sy, sx, sy + 112);
+        scrim.addColorStop(0, "rgba(9, 13, 24, 0.28)");
+        scrim.addColorStop(0.45, "rgba(9, 13, 24, 0.52)");
+        scrim.addColorStop(1, "rgba(6, 10, 20, 0.92)");
+        ctx.fillStyle = scrim;
+        ctx.fillRect(sx, sy, 194, 112);
+
+        ctx.strokeStyle = rec ? "#4ade80" : curC.color;
+        ctx.lineWidth = rec ? 2 : 1.6;
+        ctx.strokeRect(sx, sy, 194, 112);
+
+        // Glowing stage number pill
+        ctx.fillStyle = curC.color;
+        ctx.fillRect(sx + 8, sy + 8, 28, 17);
+        ctx.fillStyle = "#0f172a";
+        ctx.font = "900 10px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(`0${i + 1}`, sx + 22, sy + 20);
+
+        if (rec) {
+          ctx.fillStyle = "rgba(21, 128, 61, 0.92)";
+          ctx.fillRect(sx + 138, sy + 8, 48, 17);
+          ctx.fillStyle = "#fef08a";
+          ctx.font = "900 9.5px monospace";
+          ctx.textAlign = "center";
+          ctx.fillText(`✓ ${rec.bestRank}級`, sx + 162, sy + 20);
+        }
+
+        ctx.textAlign = "left";
+        ctx.shadowColor = "rgba(0,0,0,0.92)";
+        ctx.shadowBlur = 4;
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "900 11.5px monospace";
+        ctx.fillText(st ? st.hudName : `STAGE 0${i + 1}`, sx + 10, sy + 68);
+
+        ctx.fillStyle = "#e2e8f0";
+        ctx.font = "bold 8.5px monospace";
+        const bossShort = st && st.enemies && st.enemies.boss ? st.enemies.boss.name.replace(/^.*—\s*/, "BOSS: ") : "STAGE BOSS";
+        ctx.fillText(bossShort.slice(0, 18), sx + 10, sy + 84);
+
+        ctx.fillStyle = "#fde047";
+        ctx.font = "bold 9px monospace";
+        ctx.fillText(rec ? `最佳 ${rec.bestScore}  ▶ 再戰` : "▶ 點擊立即開戰！", sx + 10, sy + 102);
+        ctx.restore();
+      }
+      return;
+    }
+
+    // Full-Screen Interactive Taiwan or Japan Overworld Sub-Map!
+    if (worldMapView === "taiwan" || worldMapView === "japan") {
+      const isTw = worldMapView === "taiwan";
+      const bg = window.sprites && window.sprites.get(isTw ? "map_taiwan_full" : "map_japan_full");
+      if (bg) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(bg, 0, 0, W, H);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = "#0c4a6e";
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      const nodes = isTw ? TAIWAN_MAP_NODES : JAPAN_MAP_NODES;
+      const accent = isTw ? "#f59e0b" : "#f472b6";
+
+      // Draw interactive badges & pulsing highlight on selected landmark
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        const active = i === selectedRegionNode;
+        // Draw explicit 07 badge for Dadaocheng on Taiwan map (since 01..06 are painted in art)
+        if (isTw && n.num === "07") {
+          ctx.save();
+          ctx.fillStyle = active ? "#fcd34d" : "#fef3c7";
+          ctx.fillRect(n.x - 16, n.y - 10, 32, 20);
+          ctx.strokeStyle = "#1e293b";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(n.x - 16, n.y - 10, 32, 20);
+          ctx.fillStyle = "#0f172a";
+          ctx.font = "900 11px monospace";
+          ctx.textAlign = "center";
+          ctx.fillText("07", n.x, n.y + 4);
+          ctx.restore();
+        }
+        // Cleared checkmark & Rank badge on Taiwan / Japan map landmarks!
+        const rec = getStageRecord(n.stage);
+        if (rec) {
+          ctx.save();
+          ctx.fillStyle = "rgba(21, 128, 61, 0.92)";
+          ctx.fillRect(n.x + 12, n.y - 16, 30, 14);
+          ctx.strokeStyle = "#86efac";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(n.x + 12, n.y - 16, 30, 14);
+          ctx.fillStyle = "#fef08a";
+          ctx.font = "900 8.5px monospace";
+          ctx.textAlign = "center";
+          ctx.fillText(`✓${rec.bestRank}`, n.x + 27, n.y - 6);
+          ctx.restore();
+        }
+        if (active) {
+          const pulse = Math.sin(tick * 0.16) * 4;
+          ctx.save();
+          ctx.strokeStyle = accent;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, 20 + pulse, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = "rgba(10, 15, 28, 0.90)";
+          const label = `${n.num} ${n.name} ▶`;
+          const lw = Math.max(108, label.length * 10 + 18);
+          const lx = Math.max(8, Math.min(W - lw - 8, n.x - lw / 2));
+          const ly = n.y > 300 ? n.y - 42 : n.y + 24;
+          ctx.fillRect(lx, ly, lw, 20);
+          ctx.strokeStyle = accent;
+          ctx.lineWidth = 1.6;
+          ctx.strokeRect(lx, ly, lw, 20);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 10px monospace";
+          ctx.textAlign = "center";
+          ctx.fillText(label, lx + lw / 2, ly + 14);
+          ctx.restore();
+        }
+      }
+
+      // Top Navigation Bar: Back to World Map + Title + Quick Switch Taiwan <-> Japan
+      ctx.fillStyle = "rgba(9, 13, 22, 0.82)";
+      ctx.fillRect(0, 0, W, 38);
+      // Back button
+      ctx.fillStyle = "rgba(30, 41, 59, 0.95)";
+      ctx.fillRect(8, 7, 118, 24);
+      ctx.strokeStyle = "#94a3b8";
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(8, 7, 118, 24);
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "bold 10px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("◀ 返回世界地圖", 67, 23);
+
+      // Center title
+      ctx.fillStyle = "#fcd34d";
+      ctx.font = "900 12px monospace";
+      ctx.fillText(
+        isTw ? "🇹🇼 台灣大地圖 — 點擊 01～07 地標直接開戰！" : "🇯🇵 日本大地圖 — 點擊 01～06 地標直接開戰！",
+        W / 2,
+        23
+      );
+
+      // Quick region switch pill (Taiwan -> Japan -> SEA)
+      ctx.fillStyle = isTw ? "rgba(157, 23, 77, 0.92)" : "rgba(180, 83, 9, 0.92)";
+      ctx.fillRect(518, 7, 114, 24);
+      ctx.strokeStyle = isTw ? "#f472b6" : "#fcd34d";
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(518, 7, 114, 24);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 10px monospace";
+      ctx.fillText(isTw ? "切換 🇯🇵 日本 ▶" : "切換 🌏 東南亞 ▶", 575, 23);
+      return;
+    }
+
+    // Smooth 3-tier vertical camera pan:
+    // 0 = Row 1 (Island 1 / Bio-Island), 326 = Row 2 (Taiwan / Japan), 663 = Row 3 (Southeast Asia 4 Countries!)
+    const targetMapY = selectedIsland === 4 ? 663 : (selectedIsland === 2 || selectedIsland === 3) ? 326 : 0;
     mapCameraY += (targetMapY - mapCameraY) * 0.11;
 
     const mapBg = window.sprites && window.sprites.get("map_island");
@@ -4193,16 +5831,38 @@
     // Route 1: Island 1 -> Bio-Island
     ctx.moveTo(212, 165);
     ctx.quadraticCurveTo(328, 120, 452, 162);
-    // Route 2: Island 1 -> South down to BIG Taiwan Island!
+    // Route 2: Island 1 -> South down to Taiwan Island
     ctx.moveTo(166, 265);
     ctx.quadraticCurveTo(156, 340, 174, 412);
+    // Route 3: Taiwan Island -> East across sea to Japan Archipelago!
+    ctx.moveTo(222, 474);
+    ctx.quadraticCurveTo(334, 434, 452, 466);
+    // Route 4: Bio-Island -> South down to Japan Archipelago!
+    ctx.moveTo(486, 258);
+    ctx.quadraticCurveTo(504, 336, 486, 404);
+    // Route 5: Taiwan -> South down to Thailand & Malaysia!
+    ctx.moveTo(174, 492);
+    ctx.quadraticCurveTo(186, 628, 228, 768);
+    // Route 6: Japan -> South down to Vietnam & Singapore!
+    ctx.moveTo(482, 496);
+    ctx.quadraticCurveTo(470, 636, 424, 776);
+    // Route 7: Southeast Asia internal sea loop (Thailand -> Malaysia -> Singapore -> Vietnam)
+    ctx.moveTo(228, 768);
+    ctx.quadraticCurveTo(212, 828, 226, 890);
+    ctx.quadraticCurveTo(336, 926, 446, 906);
+    ctx.quadraticCurveTo(458, 842, 424, 776);
     ctx.stroke();
 
-    // Glowing Map Pins anchored on the 3 full-size islands in world-map space!
+    // Glowing Map Pins anchored on all islands + 4 Southeast Asia countries in world-map space!
     const pins = [
-      { idx: 0, x: 175, y: 138, color: "#f59e0b", label: "海港＆機場" },
+      { idx: 0, x: 175, y: 138, color: "#f59e0b", label: "海港＆末班機" },
       { idx: 1, x: 486, y: 142, color: "#4ade80", label: "生化島研究所" },
-      { idx: 2, x: 174, y: 454, color: "#ef4444", label: "台北・大稻埕 (台灣島)" },
+      { idx: 2, x: 174, y: 454, color: "#ef4444", label: "🇹🇼 台灣巡迴 (7大關卡)" },
+      { idx: 3, x: 482, y: 456, color: "#f472b6", label: "🇯🇵 日本巡迴 (6大關卡)" },
+      { idx: 4, x: 228, y: 768, color: "#f59e0b", label: "🇹🇭 泰國 (6關)" },
+      { idx: 4, x: 424, y: 776, color: "#f43f5e", label: "🇻🇳 越南 (6關)" },
+      { idx: 4, x: 226, y: 890, color: "#eab308", label: "🇲🇾 馬來西亞 (6關)" },
+      { idx: 4, x: 446, y: 906, color: "#38bdf8", label: "🇸🇬 新加坡 (6關)" },
     ];
     for (const pin of pins) {
       const active = selectedIsland === pin.idx;
@@ -4225,11 +5885,11 @@
 
       // Floating island landmark tag when active
       if (active) {
-        ctx.fillStyle = "rgba(10, 15, 28, 0.85)";
-        ctx.fillRect(pin.x - 66, py - 32, 132, 18);
+        ctx.fillStyle = "rgba(10, 15, 28, 0.88)";
+        ctx.fillRect(pin.x - 76, py - 32, 152, 18);
         ctx.strokeStyle = pin.color;
         ctx.lineWidth = 1.5;
-        ctx.strokeRect(pin.x - 66, py - 32, 132, 18);
+        ctx.strokeRect(pin.x - 76, py - 32, 152, 18);
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 9.5px monospace";
         ctx.textAlign = "center";
@@ -4238,68 +5898,101 @@
     }
     ctx.restore();
 
-    // Compact Sleek Top Header Banner
-    ctx.fillStyle = "rgba(10, 14, 23, 0.80)";
+    // Compact Sleek Top Header Banner + Southeast Asia 24-Stage Tour Entry Pill
+    ctx.fillStyle = "rgba(10, 14, 23, 0.85)";
     ctx.fillRect(0, 0, W, 42);
-    ctx.textAlign = "center";
+    ctx.textAlign = "left";
     ctx.fillStyle = "#fcd34d";
-    ctx.font = "900 14px monospace";
-    ctx.fillText("🗺️ WORLD MAP — 選擇目標島嶼 (方向鍵或點擊卡片，選台灣島鏡頭往下！)", W / 2, 20);
+    ctx.font = "900 13px monospace";
+    ctx.fillText("🗺️ WORLD MAP — 環球巡迴大地圖", 14, 20);
     ctx.fillStyle = "#86efac";
-    ctx.font = "bold 9.5px monospace";
-    const inheritText = unlockedUltLevel >= 1 ? "★ 已繼承解鎖大絕招！" : "提示：點一下卡片切換視角，再點一下或按 Enter 立即出發！";
-    ctx.fillText(inheritText, W / 2, 35);
+    ctx.font = "bold 9px monospace";
+    const inheritText = unlockedUltLevel >= 1 ? `★ 已繼承 Lv.${unlockedUltLevel} 大絕招！(點卡片切換視角，再點出發)` : "提示：點卡片切換視角，再點或按 Enter 出發！";
+    ctx.fillText(inheritText, 14, 35);
 
-    // Three Sleek Bottom Selection Cards
+    // Top-right glowing pill to enter Southeast Asia 4-Country Tour (24 Stages)
+    let seaCleared = 0;
+    for (const base of [301, 401, 501, 601]) {
+      for (let k = 0; k < 6; k++) if (getStageRecord(base + k)) seaCleared++;
+    }
+    ctx.fillStyle = "rgba(180, 83, 9, 0.92)";
+    ctx.fillRect(488, 7, 144, 28);
+    ctx.strokeStyle = "#fde047";
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(488, 7, 144, 28);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 10px monospace";
+    ctx.fillText(`🌏 東南亞巡迴 (${seaCleared}/24) ▶`, 560, 25);
+
+    // Five Sleek Bottom Selection Cards (Island 1, Bio-Lab, Taiwan, Japan, Southeast Asia 4 Countries)
     const islands = [
       {
         idx: 0,
-        x: 12,
+        x: 8,
         y: 288,
-        w: 198,
-        title: "ISLAND 1: 海港＆機場",
-        sub: "海港 ＋ 廁所 ＋ 《末班機》",
+        w: 120,
+        title: "ISLAND 1",
+        sub: "海港・末班機",
         color: "#f59e0b",
       },
       {
-        idx: 2,
-        x: 221,
+        idx: 1,
+        x: 134,
         y: 288,
-        w: 198,
-        title: "🏮 TAIWAN: 台灣島 ↓",
-        sub: "大稻埕 8+9 (更多場景預備中)",
+        w: 120,
+        title: "ISLAND 2",
+        sub: "生化島 3層",
+        color: "#4ade80",
+      },
+      {
+        idx: 2,
+        x: 260,
+        y: 288,
+        w: 120,
+        title: "🇹🇼 台灣 ↓",
+        sub: "7大關卡",
         color: "#ef4444",
       },
       {
-        idx: 1,
-        x: 430,
+        idx: 3,
+        x: 386,
         y: 288,
-        w: 198,
-        title: "ISLAND 2: 生化島研究所",
-        sub: "3層實驗室 ＋ 基因研究者",
-        color: "#4ade80",
+        w: 120,
+        title: "🇯🇵 日本 ↓",
+        sub: "6關視差",
+        color: "#f472b6",
+      },
+      {
+        idx: 4,
+        x: 512,
+        y: 288,
+        w: 120,
+        title: "🌏 東南亞 ↓↓",
+        sub: "4國 24關",
+        color: "#fbbf24",
       },
     ];
 
     for (const isl of islands) {
       const active = selectedIsland === isl.idx;
       const cardCenterX = isl.x + isl.w / 2;
-      ctx.fillStyle = active ? "rgba(10, 15, 28, 0.92)" : "rgba(10, 15, 28, 0.74)";
+      ctx.fillStyle = active ? "rgba(10, 15, 28, 0.94)" : "rgba(10, 15, 28, 0.76)";
       ctx.fillRect(isl.x, isl.y, isl.w, 60);
       ctx.strokeStyle = active ? isl.color : "#475569";
       ctx.lineWidth = active ? 2.5 : 1.5;
       ctx.strokeRect(isl.x, isl.y, isl.w, 60);
 
       ctx.fillStyle = active ? "#ffffff" : "#cbd5e1";
-      ctx.font = "bold 11.5px monospace";
+      ctx.font = "bold 10.5px monospace";
       ctx.fillText(isl.title, cardCenterX, isl.y + 20);
       ctx.fillStyle = active ? isl.color : "#94a3b8";
-      ctx.font = "bold 9.5px monospace";
+      ctx.font = "bold 8.5px monospace";
       ctx.fillText(isl.sub, cardCenterX, isl.y + 37);
       if (active) {
         ctx.fillStyle = "#fcd34d";
-        ctx.font = "bold 9px monospace";
-        ctx.fillText("▶ PRESS ENTER OR CLICK TO DEPLOY!", cardCenterX, isl.y + 53);
+        ctx.font = "bold 8.5px monospace";
+        ctx.fillText("▶ ENTER / CLICK 出發!", cardCenterX, isl.y + 53);
       }
     }
   }
@@ -4635,42 +6328,66 @@
   function drawSmoker(s) {
     const sx = Math.floor(s.x - cameraX);
     const sy = Math.floor(s.y);
-    if (sx < -60 || sx > W + 60) return;
+    if (sx < -68 || sx > W + 68) return;
 
-    // Shadow
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.fillRect(sx - 20, sy - 4, 42, 8);
+    // Soft elliptical ground shadow
+    ctx.fillStyle = "rgba(0, 0, 0, 0.36)";
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - 1, 26, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Legs
-    ctx.fillStyle = "#1e293b";
-    ctx.fillRect(sx - 14, sy - 18, 4, 18);
-    ctx.fillRect(sx + 12, sy - 18, 4, 18);
-    // Wheels
-    ctx.fillStyle = "#0f172a";
-    ctx.fillRect(sx - 16, sy - 5, 8, 8);
-
-    // Chimney stack
-    ctx.fillStyle = "#334155";
-    ctx.fillRect(sx - 15, sy - 44, 6, 18);
-
-    // Barrel body
-    ctx.fillStyle = s.hitFlash > 0 ? "#fcd34d" : "#1e293b";
-    ctx.fillRect(sx - 18, sy - 32, 38, 18);
-    // Open lid if brisket popped
-    if (s.lidOpen) {
-      ctx.fillStyle = "#334155";
-      ctx.fillRect(sx - 16, sy - 42, 34, 8);
-    }
-    // Silver handle
-    ctx.fillStyle = "#cbd5e1";
-    ctx.fillRect(sx - 6, sy - 25, 14, 3);
-
-    // Hint glow if full
+    // Warm charcoal firebox glow when full
     if (s.hasBrisket) {
-      ctx.fillStyle = "#fbbf24";
-      ctx.font = "bold 8px monospace";
+      const glowPulse = 0.22 + Math.sin(tick * 0.14) * 0.08;
+      ctx.fillStyle = `rgba(249, 115, 22, ${glowPulse.toFixed(2)})`;
+      ctx.beginPath();
+      ctx.ellipse(sx + 16, sy - 16, 14, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const smokerImg = window.sprites && window.sprites.get("prop_smoker");
+    if (smokerImg) {
+      const targetH = 54;
+      const targetW = (smokerImg.width / smokerImg.height) * targetH;
+      ctx.save();
+      if (s.hitFlash > 0) {
+        ctx.filter = "brightness(2.2)";
+      } else if (!s.hasBrisket) {
+        ctx.globalAlpha = 0.72;
+      }
+      ctx.drawImage(smokerImg, sx - targetW / 2, sy - targetH + 4, targetW, targetH);
+      ctx.restore();
+    } else {
+      // Fallback procedural smoker
+      ctx.fillStyle = "#1e293b";
+      ctx.fillRect(sx - 14, sy - 18, 4, 18);
+      ctx.fillRect(sx + 12, sy - 18, 4, 18);
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(sx - 16, sy - 5, 8, 8);
+      ctx.fillStyle = "#334155";
+      ctx.fillRect(sx - 15, sy - 44, 6, 18);
+      ctx.fillStyle = s.hitFlash > 0 ? "#fcd34d" : "#1e293b";
+      ctx.fillRect(sx - 18, sy - 32, 38, 18);
+      if (s.lidOpen) {
+        ctx.fillStyle = "#334155";
+        ctx.fillRect(sx - 16, sy - 42, 34, 8);
+      }
+      ctx.fillStyle = "#cbd5e1";
+      ctx.fillRect(sx - 6, sy - 25, 14, 3);
+    }
+
+    // Floating arcade BBQ hint pill if brisket is ready
+    if (s.hasBrisket) {
+      const bob = Math.sin(tick * 0.12) * 2;
+      ctx.fillStyle = "rgba(15, 23, 42, 0.82)";
+      ctx.fillRect(sx - 15, sy - 60 + bob, 30, 12);
+      ctx.strokeStyle = "#fbbf24";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sx - 15, sy - 60 + bob, 30, 12);
+      ctx.fillStyle = "#fde047";
+      ctx.font = "900 8px monospace";
       ctx.textAlign = "center";
-      ctx.fillText("BBQ", sx + 1, sy - 36);
+      ctx.fillText("BBQ", sx, sy - 51 + bob);
     }
   }
 
@@ -4730,7 +6447,19 @@
       ctx.globalAlpha = 0.65;
     }
 
-    if (p.charId === "nightheron") {
+    if (buff) {
+      drawUltimateAuraRing(p.charId || "mustache", sx, sy, 1.0);
+    }
+
+    if (p.charId === "fallen") {
+      drawFallenSprite(p, sx, sy, buff, 1.0);
+    } else if (p.charId === "rose") {
+      drawRoseSprite(p, sx, sy, buff, 1.0);
+    } else if (p.charId === "ling") {
+      drawLingSprite(p, sx, sy, buff, 1.0);
+    } else if (p.charId === "magic") {
+      drawMagicSprite(p, sx, sy, buff, 1.0);
+    } else if (p.charId === "nightheron") {
       drawNightHeronSprite(p, sx, sy, buff, 1.0);
     } else if (p.charId === "ironfist") {
       drawIronFistSprite(p, sx, sy, buff, 1.0);
@@ -4764,6 +6493,327 @@
     }
   }
 
+  // --- Rotating 2.5D Pixel-Art Ultimate Magic Aura Ring (All 10 Heroes!) ---
+  function drawUltimateAuraRing(charId, sx, sy, scale = 1.0) {
+    const key = `aura_${charId || "mustache"}`;
+    const aura = window.sprites && window.sprites.get(key);
+    const pulse = 1 + Math.sin(tick * 0.09) * 0.04;
+    const angle = tick * 0.018;
+    if (!aura) {
+      if (charId === "ling") {
+        // Four-Symbols elemental rotating ring (Teal/White/Red/Blue + Gold core)
+        const r = 44 * scale * pulse;
+        ctx.save();
+        ctx.translate(sx, sy - 1);
+        ctx.scale(1, 0.36);
+        ctx.rotate(angle);
+        ctx.strokeStyle = "#fbbf24";
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.stroke();
+        const elemCols = ["#2dd4bf", "#f8fafc", "#ef4444", "#38bdf8"];
+        for (let k = 0; k < 4; k++) {
+          ctx.strokeStyle = elemCols[k];
+          ctx.lineWidth = 3.2;
+          ctx.beginPath();
+          ctx.arc(0, 0, r * 0.78, k * (Math.PI / 2) + 0.15, (k + 1) * (Math.PI / 2) - 0.15);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      return;
+    }
+    const size = 94 * scale * pulse;
+    ctx.save();
+    ctx.translate(sx, sy - 1);
+    // 2.5D ground perspective squash (top-down circle -> isometric arcade floor ellipse!)
+    ctx.scale(1, 0.36);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 0.94;
+    ctx.drawImage(aura, -size * 0.5, -size * 0.5, size, size);
+    // Soft additive neon glow pass so every ring genuinely illuminates the floor!
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.32 + Math.sin(tick * 0.14) * 0.10;
+    ctx.drawImage(aura, -size * 0.52, -size * 0.52, size * 1.04, size * 1.04);
+    ctx.restore();
+  }
+
+  // --- Fallen Angel (墮落天使: Wing Wind Pressure + Mark of Judgment + Remote Sky-Drop Skull Rain!) ---
+  function drawFallenSprite(p, sx, sy, buff, baseScale = 1.0) {
+    const scale = baseScale;
+
+    ctx.fillStyle = "rgba(0,0,0,0.42)";
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 25 * scale, 7.5 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    let spriteKey = "fallen_idle";
+    if (gameState === STATE.RELOAD_CUTSCENE && p === player) {
+      spriteKey = reloadCutsceneTimer > 36 ? "fallen_ult_awake" : "fallen_ult_idle";
+    } else if (p.fallenFinisherVisual > 0) {
+      spriteKey = p.fallenFinisherVisual > 20 ? "fallen_ult_lv3_charge" : "fallen_ult_lv3_finisher";
+    } else if (p.skillType === "fallen_judgment" && p.skillActiveTimer > 0) {
+      spriteKey =
+        p.skillActiveTimer >= 22
+          ? "fallen_k_rise"
+          : p.skillActiveTimer >= 15
+          ? "fallen_k_slash"
+          : p.skillActiveTimer >= 6
+          ? "fallen_k_pillar"
+          : "fallen_k_land";
+    } else if (buff) {
+      if (p.attackTimer > 2) {
+        if (unlockedUltLevel >= 2 && p.attackType === 2) {
+          spriteKey = "fallen_ult_lv2_slam";
+        } else if (unlockedUltLevel >= 2 && p.attackType === 1) {
+          spriteKey = "fallen_ult_lv2_charge";
+        } else if (p.attackType === 2) {
+          spriteKey = "fallen_ult_lv1_wave";
+        } else {
+          spriteKey = "fallen_ult_lv1_slash";
+        }
+      } else {
+        spriteKey = "fallen_ult_idle";
+      }
+    } else if (p.attackTimer > 2) {
+      spriteKey = p.attackType === 0 ? "fallen_atk1" : p.attackType === 1 ? "fallen_atk2" : "fallen_atk3";
+    }
+
+    const sprite = window.sprites && window.sprites.get(spriteKey);
+    if (sprite) {
+      const isColossal =
+        spriteKey === "fallen_ult_lv3_charge" ||
+        spriteKey === "fallen_ult_lv3_finisher" ||
+        spriteKey === "fallen_ult_awake" ||
+        spriteKey === "fallen_k_rise";
+      const targetH = (isColossal ? 124 : 112) * scale;
+      const targetW = (sprite.width / sprite.height) * targetH;
+      const walkBob = p.attackTimer > 2 || p.skillActiveTimer > 0 ? 0 : Math.abs(Math.sin(p.walkFrame)) * 3.0;
+      const anchorOffsetX =
+        spriteKey === "fallen_idle" ||
+        spriteKey === "fallen_ult_idle" ||
+        spriteKey === "fallen_ult_awake" ||
+        spriteKey === "fallen_k_rise" ||
+        spriteKey === "fallen_k_land"
+          ? 0
+          : spriteKey === "fallen_ult_lv3_finisher"
+          ? 20 * scale
+          : 12 * scale;
+
+      ctx.save();
+      ctx.translate(sx, sy - p.z - walkBob);
+      ctx.scale(p.facing, 1);
+      ctx.drawImage(sprite, -targetW * 0.5 + anchorOffsetX, -targetH + 3, targetW, targetH);
+      ctx.restore();
+    }
+  }
+
+  // --- Rose (蘿絲: Alice's Sister — Psychic Control + 3-Tier Inferno Fire Fist!) ---
+  function drawRoseSprite(p, sx, sy, buff, baseScale = 1.0) {
+    const scale = baseScale;
+
+    ctx.fillStyle = "rgba(0,0,0,0.40)";
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 21 * scale, 6.8 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    let spriteKey = "rose_idle";
+    if (gameState === STATE.RELOAD_CUTSCENE && p === player) {
+      spriteKey = reloadCutsceneTimer > 36 ? "rose_ult_mass" : "rose_ult_idle";
+    } else if (p.roseFinisherVisual > 0) {
+      spriteKey = p.roseFinisherVisual > 18 ? "rose_ult_lv3_charge" : "rose_ult_lv3_finisher";
+    } else if (p.skillType === "rose_psychic" && p.skillActiveTimer > 0) {
+      spriteKey =
+        p.skillActiveTimer >= 21
+          ? "rose_k_cast"
+          : p.skillActiveTimer >= 14
+          ? "rose_k_wave"
+          : p.skillActiveTimer >= 6
+          ? "rose_k_control"
+          : "rose_k_smirk";
+    } else if (buff) {
+      if (p.attackTimer > 2) {
+        if (unlockedUltLevel >= 2 && p.attackType === 2) {
+          spriteKey = "rose_ult_lv2_ring";
+        } else if (unlockedUltLevel >= 2 && p.attackType === 1) {
+          spriteKey = "rose_ult_lv2_charge";
+        } else if (unlockedUltLevel >= 1 && p.attackType === 2) {
+          spriteKey = "rose_ult_lv1_beam";
+        } else {
+          spriteKey = "rose_ult_lv1_flurry";
+        }
+      } else {
+        spriteKey = "rose_ult_idle";
+      }
+    } else if (p.attackTimer > 2) {
+      spriteKey = p.attackType === 0 ? "rose_atk1" : p.attackType === 1 ? "rose_atk2" : "rose_atk3";
+    }
+
+    const sprite = window.sprites && window.sprites.get(spriteKey);
+    if (sprite) {
+      const isTallAura =
+        spriteKey === "rose_ult_idle" ||
+        spriteKey === "rose_ult_lv3_charge" ||
+        spriteKey === "rose_ult_lv3_finisher";
+      const targetH = (isTallAura ? 112 : 98) * scale;
+      const targetW = (sprite.width / sprite.height) * targetH;
+      const walkBob = p.attackTimer > 2 || p.skillActiveTimer > 0 ? 0 : Math.abs(Math.sin(p.walkFrame)) * 3.0;
+      const anchorOffsetX =
+        spriteKey === "rose_idle" ||
+        spriteKey === "rose_ult_idle" ||
+        spriteKey === "rose_k_cast" ||
+        spriteKey === "rose_k_smirk" ||
+        spriteKey === "rose_ult_lv2_charge" ||
+        spriteKey === "rose_ult_lv2_ring"
+          ? 0
+          : spriteKey === "rose_ult_lv3_finisher"
+          ? 24 * scale
+          : 15 * scale;
+
+      ctx.save();
+      ctx.translate(sx, sy - p.z - walkBob);
+      ctx.scale(p.facing, 1);
+      ctx.drawImage(sprite, -targetW * 0.5 + anchorOffsetX, -targetH + 3, targetW, targetH);
+      ctx.restore();
+    }
+  }
+
+  // --- Ling (鈴: Four-Symbols Summoner — White Tiger / Azure Dragon / Vermilion Bird / Black Tortoise!) ---
+  function drawLingSprite(p, sx, sy, buff, baseScale = 1.0) {
+    const scale = baseScale;
+
+    ctx.fillStyle = "rgba(0,0,0,0.40)";
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 21 * scale, 6.8 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    let spriteKey = "ling_idle";
+    if (gameState === STATE.RELOAD_CUTSCENE && p === player) {
+      spriteKey = reloadCutsceneTimer > 36 ? "ling_ult_start" : "ling_ult_idle";
+    } else if (p.lingFinisherVisual > 0) {
+      spriteKey = p.lingFinisherVisual > 18 ? "ling_ult_lv3_charge" : "ling_ult_lv3_finisher";
+    } else if (p.skillType === "ling_xuanwu" && p.skillActiveTimer > 0) {
+      spriteKey =
+        p.skillActiveTimer >= 21
+          ? "ling_k_cast"
+          : p.skillActiveTimer >= 13
+          ? "ling_k_shield"
+          : p.skillActiveTimer >= 6
+          ? "ling_k_push"
+          : "ling_k_land";
+    } else if (buff) {
+      if (p.attackTimer > 2) {
+        if (unlockedUltLevel >= 2 && p.attackType === 2) {
+          spriteKey = "ling_ult_lv2_water";
+        } else if (unlockedUltLevel >= 2 && p.attackType === 1) {
+          spriteKey = "ling_ult_lv2_fire";
+        } else if (unlockedUltLevel >= 1 && p.attackType === 2) {
+          spriteKey = "ling_ult_lv1";
+        } else {
+          spriteKey = "ling_ult_combo";
+        }
+      } else {
+        spriteKey = "ling_ult_idle";
+      }
+    } else if (p.attackTimer > 2) {
+      spriteKey = p.attackType === 0 ? "ling_atk1" : p.attackType === 1 ? "ling_atk2" : "ling_atk3";
+    }
+
+    const sprite = window.sprites && window.sprites.get(spriteKey);
+    if (sprite) {
+      const isLargeBeast =
+        spriteKey !== "ling_idle" &&
+        spriteKey !== "ling_k_land";
+      const targetH = (isLargeBeast ? 112 : 96) * scale;
+      const targetW = (sprite.width / sprite.height) * targetH;
+      const walkBob = p.attackTimer > 2 || p.skillActiveTimer > 0 ? 0 : Math.abs(Math.sin(p.walkFrame)) * 3.0;
+      const anchorOffsetX =
+        spriteKey === "ling_idle" ||
+        spriteKey === "ling_ult_idle" ||
+        spriteKey === "ling_ult_start" ||
+        spriteKey === "ling_k_cast" ||
+        spriteKey === "ling_k_shield" ||
+        spriteKey === "ling_k_push" ||
+        spriteKey === "ling_k_land" ||
+        spriteKey === "ling_ult_lv3_charge" ||
+        spriteKey === "ling_ult_lv3_finisher"
+          ? 0
+          : 16 * scale;
+
+      ctx.save();
+      ctx.translate(sx, sy - p.z - walkBob);
+      ctx.scale(p.facing, 1);
+      ctx.drawImage(sprite, -targetW * 0.5 + anchorOffsetX, -targetH + 3, targetW, targetH);
+      ctx.restore();
+    }
+  }
+
+  // --- Magic (瑪姬: Dark Sorceress — Crowned Skulls + Dark Knight + Vortex Pull + Shadow Empress Ult!) ---
+  function drawMagicSprite(p, sx, sy, buff, baseScale = 1.0) {
+    const scale = baseScale;
+
+    ctx.fillStyle = "rgba(0,0,0,0.40)";
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 21 * scale, 6.8 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    let spriteKey = "magic_idle";
+    if (gameState === STATE.RELOAD_CUTSCENE && p === player) {
+      spriteKey = reloadCutsceneTimer > 36 ? "magic_ult_rift" : "magic_ult_idle";
+    } else if (p.magicFinisherVisual > 0) {
+      spriteKey = p.magicFinisherVisual > 18 ? "magic_ult_lv3_empress" : "magic_ult_lv3_beam";
+    } else if (p.skillType === "magic_vortex" && p.skillActiveTimer > 0) {
+      spriteKey =
+        p.skillActiveTimer >= 22
+          ? "magic_k_cast"
+          : p.skillActiveTimer >= 16
+          ? "magic_k_step"
+          : p.skillActiveTimer >= 8
+          ? "magic_k_pull"
+          : "magic_k_burst";
+    } else if (buff) {
+      if (p.attackTimer > 2) {
+        if (unlockedUltLevel >= 2 && p.attackType === 2) {
+          spriteKey = "magic_ult_lv2_vortex";
+        } else if (unlockedUltLevel >= 2 && p.attackType === 1) {
+          spriteKey = "magic_ult_lv2_pillars";
+        } else if (unlockedUltLevel >= 1 && p.attackType === 2) {
+          spriteKey = "magic_ult_lv1";
+        } else {
+          spriteKey = "magic_ult_skulls";
+        }
+      } else {
+        spriteKey = "magic_ult_idle";
+      }
+    } else if (p.attackTimer > 2) {
+      spriteKey = p.attackType === 0 ? "magic_atk1" : p.attackType === 1 ? "magic_atk2" : "magic_atk3";
+    }
+
+    const sprite = window.sprites && window.sprites.get(spriteKey);
+    if (sprite) {
+      const isTallUlt =
+        spriteKey === "magic_ult_idle" ||
+        spriteKey === "magic_ult_lv3_empress" ||
+        spriteKey === "magic_ult_lv3_beam";
+      const targetH = (isTallUlt ? 114 : 98) * scale;
+      const targetW = (sprite.width / sprite.height) * targetH;
+      const walkBob = p.attackTimer > 2 || p.skillActiveTimer > 0 ? 0 : Math.abs(Math.sin(p.walkFrame)) * 3.0;
+      const anchorOffsetX =
+        spriteKey === "magic_idle" || spriteKey === "magic_ult_idle"
+          ? 0
+          : spriteKey === "magic_ult_lv3_beam"
+          ? 24 * scale
+          : 14 * scale;
+
+      ctx.save();
+      ctx.translate(sx, sy - p.z - walkBob);
+      ctx.scale(p.facing, 1);
+      ctx.drawImage(sprite, -targetW * 0.5 + anchorOffsetX, -targetH + 3, targetW, targetH);
+      ctx.restore();
+    }
+  }
+
   // --- Night Heron (長髮・夜鷺: Hands-in-Pockets Rain Kicks + Heel Tap Evade / Ultimate: Rain-Sky Blades + Team Combo!) ---
   function drawNightHeronSprite(p, sx, sy, buff, baseScale = 1.0) {
     const scale = baseScale;
@@ -4772,16 +6822,6 @@
     ctx.beginPath();
     ctx.ellipse(sx, sy, 21 * scale, 6.8 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
-
-    if (buff) {
-      ctx.save();
-      ctx.strokeStyle = "rgba(56, 189, 248, 0.85)";
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.ellipse(sx, sy - 2, 34 * scale, 11 * scale, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
 
     let spriteKey = "nh_idle";
     if (gameState === STATE.RELOAD_CUTSCENE && p === player) {
@@ -4843,16 +6883,6 @@
     ctx.ellipse(sx, sy, 22 * scale, 7 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    if (buff) {
-      ctx.save();
-      ctx.strokeStyle = "rgba(245, 158, 11, 0.85)";
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.ellipse(sx, sy - 2, 34 * scale, 11 * scale, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
     let spriteKey = "if_idle";
     if (gameState === STATE.RELOAD_CUTSCENE && p === player) {
       spriteKey = reloadCutsceneTimer > 36 ? "if_ult_steam" : "if_ult_idle";
@@ -4909,21 +6939,6 @@
     ctx.beginPath();
     ctx.ellipse(sx, sy, 20 * scale, 6.5 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
-
-    if (buff) {
-      ctx.save();
-      ctx.strokeStyle = "rgba(225, 29, 72, 0.85)";
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.ellipse(sx, sy - 2, 34 * scale, 11 * scale, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(212, 175, 55, 0.72)";
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.ellipse(sx, sy - 2, 42 * scale, 14 * scale, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
 
     // Select exact frame from Alice's 8-frame Normal & 8-frame Ultimate sheets!
     let spriteKey = "alice_idle";
@@ -4990,16 +7005,6 @@
     ctx.beginPath();
     ctx.ellipse(sx, sy, 22 * scale, 7 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
-
-    if (buff) {
-      ctx.save();
-      ctx.strokeStyle = "rgba(253, 230, 138, 0.85)";
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.ellipse(sx, sy - 2, 34 * scale, 11 * scale, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
 
     // Select exact frame from Shaka's 8-frame Normal & 8-frame Thousand-Hand Ultimate sheets!
     let spriteKey = "shaka_idle";
@@ -5073,22 +7078,6 @@
     ctx.beginPath();
     ctx.ellipse(sx, sy, 20 * scale, 6.5 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
-
-    // Eclipse Society black-gold aura ring when Dual-Pistol Ultimate is active!
-    if (buff) {
-      ctx.save();
-      ctx.strokeStyle = "rgba(212, 175, 55, 0.85)";
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.ellipse(sx, sy - 2, 30 * scale, 10 * scale, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(168, 85, 247, 0.55)";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.ellipse(sx, sy - 2, 36 * scale, 12 * scale, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
 
     // Select the exact frame from Raven's 8-frame Dagger & 8-frame Eclipse Dual-Pistol sheets!
     let spriteKey = "raven_idle";
@@ -5244,19 +7233,31 @@
       }
       ctx.drawImage(sprite, -targetW * 0.5 + lungeX, -targetH + 4, targetW, targetH);
 
-      // Only draw fallback procedural cone if the 8-frame spray sprite isn't loaded
-      if (attacking && !buff && !window.sprites.get("momo_spray_fire")) {
-        const coneGrad = ctx.createLinearGradient(14, -44, 86, -44);
-        coneGrad.addColorStop(0, "rgba(253, 224, 71, 0.78)");
-        coneGrad.addColorStop(0.5, "rgba(251, 146, 60, 0.45)");
-        coneGrad.addColorStop(1, "rgba(251, 146, 60, 0)");
-        ctx.fillStyle = coneGrad;
-        ctx.beginPath();
-        ctx.moveTo(14, -45);
-        ctx.lineTo(86, -64);
-        ctx.lineTo(86, -24);
-        ctx.closePath();
-        ctx.fill();
+      // Draw Momo's 32-bit spicy pepper spray cone straight from her spray nozzle!
+      if (attacking && !buff) {
+        const pepperImg = window.sprites && window.sprites.get("vfx_momo_pepper");
+        if (pepperImg) {
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          const pulse = 0.92 + Math.sin(tick * 0.8) * 0.08;
+          const ph = 44 * scale * pulse;
+          const pw = (pepperImg.width / pepperImg.height) * ph;
+          ctx.globalAlpha = Math.min(1, p.attackTimer / 6);
+          ctx.drawImage(pepperImg, 18 * scale + lungeX, -56 * scale - ph * 0.5, pw, ph);
+          ctx.restore();
+        } else if (!window.sprites.get("momo_spray_fire")) {
+          const coneGrad = ctx.createLinearGradient(14, -44, 86, -44);
+          coneGrad.addColorStop(0, "rgba(253, 224, 71, 0.78)");
+          coneGrad.addColorStop(0.5, "rgba(251, 146, 60, 0.45)");
+          coneGrad.addColorStop(1, "rgba(251, 146, 60, 0)");
+          ctx.fillStyle = coneGrad;
+          ctx.beginPath();
+          ctx.moveTo(14, -45);
+          ctx.lineTo(86, -64);
+          ctx.lineTo(86, -24);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
       ctx.restore();
     }
@@ -5606,50 +7607,82 @@
     ctx.restore();
   }
 
-  // --- Mustache Hero (HD 16-bit Pixel Art Normal + BUFF MODE with Little Pocket!) ---
+  // --- Mustache Hero (Full 20-Frame 32-bit Remaster: Normal 8 + Buff 8 + Buff Ground-Slam 4!) ---
   function drawMustacheSprite(p, sx, sy, buff, baseScale = 1.0) {
-    const scale = (buff ? 1.22 : 1.0) * baseScale;
+    const scale = baseScale;
 
     // Ground shadow
-    ctx.fillStyle = "rgba(0,0,0,0.38)";
+    ctx.fillStyle = "rgba(0,0,0,0.40)";
     ctx.beginPath();
-    ctx.ellipse(sx, sy, 21 * scale, 7 * scale, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx, sy, (buff ? 25 : 21) * scale, (buff ? 8 : 6.8) * scale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const sprite = window.sprites && window.sprites.get(buff ? "hero_mustache_buff" : "hero_mustache_normal");
+    let spriteKey = "must_idle";
+    if (gameState === STATE.RELOAD_CUTSCENE && p === player) {
+      spriteKey =
+        reloadCutsceneTimer > 52
+          ? "must_ult_prep"
+          : reloadCutsceneTimer > 30
+          ? "must_ult_reload"
+          : "must_ult_buff1";
+    } else if (p.skillType === "ground_slam" && p.skillActiveTimer > 0) {
+      const prefix = buff ? "must_bk" : "must_k";
+      if (p.skillActiveTimer >= 30) {
+        spriteKey = `${prefix}_crouch`;
+      } else if (p.z > 2 || !p.skillImpactDone) {
+        spriteKey = `${prefix}_jump`;
+      } else if (p.skillActiveTimer >= 4) {
+        spriteKey = `${prefix}_slam`;
+      } else {
+        spriteKey = `${prefix}_ring`;
+      }
+    } else if (buff) {
+      if (p.attackTimer > 2 || p.flurryHitsLeft > 0) {
+        if (unlockedUltLevel >= 2 && p.attackType === 2) {
+          spriteKey = "must_ult_lv3";
+        } else if (unlockedUltLevel >= 1 && p.attackType >= 1) {
+          spriteKey = "must_ult_lv1";
+        } else {
+          spriteKey = "must_ult_punch1";
+        }
+      } else {
+        spriteKey = Math.floor(tick / 12) % 2 === 0 ? "must_ult_buff1" : "must_ult_buff2";
+      }
+    } else if (p.attackTimer > 2) {
+      spriteKey = p.attackType === 0 ? "must_atk1" : p.attackType === 1 ? "must_atk2" : "must_atk3";
+    }
+
+    const sprite =
+      (window.sprites && window.sprites.get(spriteKey)) ||
+      (window.sprites && window.sprites.get(buff ? "hero_mustache_buff" : "hero_mustache_normal"));
     if (sprite) {
-      const targetH = 82 * scale;
+      const isBuffFrame =
+        spriteKey.startsWith("must_ult_buff") ||
+        spriteKey.startsWith("must_ult_punch") ||
+        spriteKey.startsWith("must_ult_lv") ||
+        spriteKey.startsWith("must_bk_");
+      const isJumpSlam = spriteKey.endsWith("_jump");
+      const targetH = (isBuffFrame ? (isJumpSlam ? 114 : 106) : (isJumpSlam ? 98 : 92)) * scale;
       const targetW = (sprite.width / sprite.height) * targetH;
-      const punching = p.attackTimer > 4;
-      const reloading = gameState === STATE.RELOAD_CUTSCENE && p.charId === "mustache";
-      const walkBob = reloading
-        ? Math.abs(Math.sin(reloadCutsceneTimer * 0.5)) * 5
-        : p.walkFrame > 0
-        ? Math.abs(Math.sin(p.walkFrame)) * 3.5
-        : Math.sin(tick * 0.08) * 1.2;
-      const lungeX = punching ? (p.attackType === 2 ? 15 : 10) : 0;
-      const lean = punching ? 0.08 : p.walkFrame > 0 ? Math.sin(p.walkFrame) * 0.05 : 0;
+      const punching = p.attackTimer > 2 || p.skillActiveTimer > 0;
+      const walkBob = punching ? 0 : Math.abs(Math.sin(p.walkFrame)) * 3.2;
+      const anchorOffsetX =
+        spriteKey === "must_atk1" ||
+        spriteKey === "must_atk2" ||
+        spriteKey === "must_atk3" ||
+        spriteKey === "must_ult_punch1" ||
+        spriteKey === "must_ult_lv1" ||
+        spriteKey === "must_ult_lv3"
+          ? 12 * scale
+          : 0;
 
       ctx.save();
       ctx.translate(sx, sy - p.z - walkBob);
       ctx.scale(p.facing, 1);
-      ctx.rotate(lean);
       if (p.hurtTimer > 0 && p.hurtTimer % 4 < 2) {
         ctx.filter = "brightness(2.4)";
       }
-      ctx.drawImage(sprite, -targetW * 0.5 + lungeX, -targetH + 3, targetW, targetH);
-
-      // Dynamic Punch Energy Fist Flash!
-      if (punching) {
-        ctx.fillStyle = buff ? "rgba(56, 189, 248, 0.78)" : "rgba(252, 211, 77, 0.75)";
-        ctx.beginPath();
-        ctx.arc(targetW * 0.42 + lungeX, -targetH * 0.56, buff ? 16 : 11, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath();
-        ctx.arc(targetW * 0.45 + lungeX, -targetH * 0.56, buff ? 8 : 5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      ctx.drawImage(sprite, -targetW * 0.5 + anchorOffsetX, -targetH + 3, targetW, targetH);
       ctx.restore();
       return;
     }
@@ -5777,6 +7810,25 @@
     ctx.save();
     if (e.dead) {
       ctx.globalAlpha = Math.max(0, e.fadeTimer / 46);
+    }
+
+    // Enemy Attack Telegraph Warning Flash (!) right before strike — cue for [K] JUST DODGE!
+    if (!e.dead && e.attackTimer >= 11 && e.attackTimer <= 24) {
+      const pulse = Math.sin(tick * 0.65) * 0.5 + 0.5;
+      const warnY = sy - e.z - (e.type === "genex_boss" ? 96 : e.type === "boss" || e.type === "wt_boss" ? 84 : 74);
+      ctx.save();
+      ctx.fillStyle = pulse > 0.4 ? "#ef4444" : "#facc15";
+      ctx.beginPath();
+      ctx.arc(sx, warnY, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 12px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("!", sx, warnY + 4);
+      ctx.restore();
     }
 
     // Mini-Boss / Boss ground aura ring
@@ -6016,32 +8068,155 @@
     }
 
     for (const w of swordWaves) {
-      const alpha = Math.max(0, w.life / w.maxLife);
+      const alpha = Math.max(0, Math.min(1, (w.life / w.maxLife) * 1.25));
       const sx = Math.floor(w.x - cameraX);
       const sy = Math.floor(w.y - w.z);
+      const col = (w.color || "#38bdf8").toLowerCase();
+      const slashKey =
+        w.spriteKey ||
+        (col.includes("c084") || col.includes("a855") || col.includes("9333") || col.includes("e9d5")
+          ? "vfx_slash_purple"
+          : col.includes("f973") || col.includes("ef44") || col.includes("fb92") || col.includes("f43f") || col.includes("e11d")
+          ? "vfx_slash_fire"
+          : col.includes("fbbf") || col.includes("fde0") || col.includes("fcd3") || col.includes("d4af") || col.includes("f59e")
+          ? "vfx_slash_gold"
+          : "vfx_slash_cyan");
+      const slashImg = window.sprites && window.sprites.get(slashKey);
+      const isFist = Boolean(w.spriteKey && w.spriteKey.startsWith("vfx_firefist"));
+      const isCustomProj = isFist || Boolean(w.spriteKey && w.spriteKey.startsWith("vfx_proj_"));
+
       ctx.save();
-      ctx.globalAlpha = alpha;
       ctx.translate(sx, sy);
       ctx.scale(w.facing, 1);
-      ctx.fillStyle = w.color || "#38bdf8";
-      ctx.beginPath();
-      ctx.moveTo(-6, -24);
-      ctx.quadraticCurveTo(18, 0, -6, 24);
-      ctx.quadraticCurveTo(6, 0, -6, -24);
-      ctx.fill();
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.moveTo(-2, -18);
-      ctx.quadraticCurveTo(12, 0, -2, 18);
-      ctx.quadraticCurveTo(4, 0, -2, -18);
-      ctx.fill();
+      if (slashImg) {
+        const projHeightMap = {
+          vfx_firefist_lv3: 74,
+          vfx_firefist_lv2: 54,
+          vfx_firefist_lv1: 38,
+          vfx_proj_magic: w.heavy ? 62 : 50,
+          vfx_proj_raven: w.heavy ? 46 : 36,
+          vfx_proj_momo: w.heavy ? 66 : 56,
+          vfx_proj_nightheron: w.heavy ? 70 : 58,
+          vfx_proj_fallen: w.heavy ? 76 : 64,
+          vfx_proj_ling: w.heavy ? 74 : 60,
+          vfx_proj_ironfist: w.heavy ? 68 : 54,
+          vfx_proj_shaka: w.heavy ? 74 : 62,
+          vfx_proj_alice: w.heavy ? 66 : 52,
+          vfx_proj_mustache: w.heavy ? 68 : 54,
+        };
+        const targetH = projHeightMap[w.spriteKey] || (w.heavy ? 88 : 74);
+        const targetW = (slashImg.width / slashImg.height) * targetH;
+        if (isCustomProj) {
+          ctx.imageSmoothingEnabled = false;
+          // Subtle luminous motion trail + crisp alpha-cutout 32-bit projectile!
+          ctx.globalCompositeOperation = "lighter";
+          ctx.globalAlpha = alpha * 0.30;
+          ctx.drawImage(slashImg, -targetW * 0.55 - 12, -targetH * 0.5, targetW, targetH);
+          ctx.globalCompositeOperation = "source-over";
+          ctx.globalAlpha = alpha;
+          ctx.drawImage(slashImg, -targetW * 0.45, -targetH * 0.5, targetW, targetH);
+        } else {
+          ctx.globalCompositeOperation = "lighter";
+          ctx.globalAlpha = alpha * 0.42;
+          ctx.drawImage(slashImg, -targetW * 0.5 - 16, -targetH * 0.5, targetW, targetH);
+          ctx.globalAlpha = alpha;
+          ctx.drawImage(slashImg, -targetW * 0.5 + 4, -targetH * 0.5, targetW, targetH);
+        }
+      } else {
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = w.color || "#38bdf8";
+        ctx.beginPath();
+        ctx.moveTo(-6, -24);
+        ctx.quadraticCurveTo(18, 0, -6, 24);
+        ctx.quadraticCurveTo(6, 0, -6, -24);
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.moveTo(-2, -18);
+        ctx.quadraticCurveTo(12, 0, -2, 18);
+        ctx.quadraticCurveTo(4, 0, -2, -18);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
     // --- Small Skill VFX (Ground Slam Shockwave, Shadow Dash Afterimages & Iaido Line, Bat Swarm & Mist) ---
     for (const fx of skillEffects) {
       const alpha = Math.max(0, fx.life / fx.maxLife);
-      if (fx.type === "shockwave") {
+      if (fx.type === "sky_drop_skull") {
+        if (fx.delay > 0) continue;
+        const sx = Math.floor(fx.x - cameraX);
+        const sy = Math.floor(fx.y);
+        if (sx < -140 || sx > W + 140) continue;
+        const pl = fx.life; // 44 down to 0
+        const st = REMOTE_AOE_STYLES[fx.style] || REMOTE_AOE_STYLES.fallen;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+
+        const sigilImg = window.sprites && window.sprites.get(st.sigil);
+        const strikeImg = window.sprites && window.sprites.get(st.strike);
+        const pillarImg = window.sprites && window.sprites.get(st.pillar);
+        const burstImg = window.sprites && window.sprites.get(st.burst);
+
+        // Phase 1 & 2 (44..18): Glowing ground lock-on sigil under distant enemy!
+        if (pl >= 18) {
+          const sAlpha = pl > 36 ? (44 - pl) / 8 : pl < 22 ? (pl - 18) / 4 : 1;
+          ctx.globalAlpha = Math.max(0, Math.min(1, sAlpha * 0.95));
+          if (sigilImg) {
+            const pulse = 1 + Math.sin(tick * 0.45) * 0.08;
+            const sw = 104 * pulse;
+            const sh = (sigilImg.height / sigilImg.width) * sw;
+            ctx.drawImage(sigilImg, sx - sw / 2, sy - sh * 0.55, sw, sh);
+          } else {
+            ctx.strokeStyle = st.color;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.ellipse(sx, sy, 48, 16, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+
+        // Phase 2 (31..20): Either Sky-Drop (Fallen/Shaka/Ling) OR Ground-Up Eruption (Magic Claw / Rose Inferno Tornado)!
+        if (pl <= 31 && pl >= 20) {
+          const t = (31 - pl) / 11; // 0 -> 1
+          ctx.globalAlpha = 1;
+          if (strikeImg) {
+            if (st.motion === "erupt") {
+              const kh = 52 + t * 88;
+              const kw = (strikeImg.width / strikeImg.height) * kh;
+              ctx.drawImage(strikeImg, sx - kw / 2, sy - kh + 10, kw, kh);
+            } else {
+              const kh = 104;
+              const kw = (strikeImg.width / strikeImg.height) * kh;
+              const dropY = sy - 245 * (1 - t * t) - 24;
+              ctx.drawImage(strikeImg, sx - kw / 2, dropY - kh / 2, kw, kh);
+            }
+          }
+        }
+
+        // Phase 3 (21..9): Massive vertical elemental/spectral pillar erupting from impact!
+        if (pl <= 21 && pl >= 9) {
+          const pAlpha = pl < 13 ? (pl - 9) / 4 : 1;
+          ctx.globalAlpha = Math.max(0, Math.min(1, pAlpha));
+          if (pillarImg) {
+            const ph = 248;
+            const pw = (pillarImg.width / pillarImg.height) * ph;
+            ctx.drawImage(pillarImg, sx - pw / 2, sy - ph + 16, pw, ph);
+          }
+        }
+
+        // Phase 4 (16..1): Expanding elemental shockwave ring!
+        if (pl <= 16) {
+          const bT = 1 - pl / 16;
+          ctx.globalAlpha = Math.max(0, 1 - bT);
+          if (burstImg) {
+            const bw = 96 + bT * 92;
+            const bh = (burstImg.height / burstImg.width) * bw;
+            ctx.drawImage(burstImg, sx - bw / 2, sy - bh * 0.65, bw, bh);
+          }
+        }
+        ctx.restore();
+      } else if (fx.type === "shockwave") {
         const sx = Math.floor(fx.x - cameraX);
         const sy = Math.floor(fx.y);
         ctx.save();
@@ -6129,60 +8304,77 @@
       } else if (fx.type === "bat_swarm") {
         const sx = Math.floor(fx.x - cameraX);
         const sy = Math.floor(fx.y - fx.z);
-        const wingY = Math.sin(fx.phase) * 5;
+        const batImg = window.sprites && window.sprites.get("vfx_momo_bats");
         ctx.save();
         ctx.globalAlpha = alpha;
-        // Black body + crimson wing outline
-        ctx.fillStyle = "#111827";
-        ctx.strokeStyle = "#ef4444";
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(sx - 8, sy - 3 + wingY);
-        ctx.lineTo(sx - 4, sy + 3);
-        ctx.lineTo(sx, sy + 1);
-        ctx.lineTo(sx + 4, sy + 3);
-        ctx.lineTo(sx + 8, sy - 3 + wingY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        if (batImg) {
+          const bob = Math.sin(fx.phase) * 3.5;
+          ctx.translate(sx, sy + bob);
+          ctx.scale(fx.vx < 0 ? -1 : 1, 1);
+          ctx.imageSmoothingEnabled = false;
+          const bh = 34;
+          const bw = (batImg.width / batImg.height) * bh;
+          ctx.drawImage(batImg, -bw * 0.5, -bh * 0.5, bw, bh);
+        } else {
+          const wingY = Math.sin(fx.phase) * 5;
+          // Black body + crimson wing outline
+          ctx.fillStyle = "#111827";
+          ctx.strokeStyle = "#ef4444";
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx - 8, sy - 3 + wingY);
+          ctx.lineTo(sx - 4, sy + 3);
+          ctx.lineTo(sx, sy + 1);
+          ctx.lineTo(sx + 4, sy + 3);
+          ctx.lineTo(sx + 8, sy - 3 + wingY);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
         ctx.restore();
       } else if (fx.type === "mist_cloud") {
         const sx = Math.floor(fx.x - cameraX);
         const sy = Math.floor(fx.y);
-        const fade = Math.min(1, fx.life / 28);
+        const fadeOut = Math.min(1, fx.life / 28);
+        const fadeIn = Math.min(1, (fx.maxLife - fx.life) / 8);
+        const fade = fadeIn * fadeOut;
+        const sc = fx.scale || 1.0;
+        const mistKey = fx.isShadow ? "vfx_mist_poison" : fx.isBlood ? "vfx_mist_blood" : "vfx_mist_pepper";
+        const mistImg = window.sprites && window.sprites.get(mistKey);
         ctx.save();
-        ctx.globalAlpha = fade * 0.55;
-        const grad = ctx.createRadialGradient(sx, sy - 10, 8, sx, sy - 10, 74);
-        if (fx.isShadow) {
-          grad.addColorStop(0, "rgba(30, 41, 59, 0.90)");
-          grad.addColorStop(0.55, "rgba(88, 28, 135, 0.52)");
-          grad.addColorStop(1, "rgba(15, 23, 42, 0)");
-        } else if (fx.isBlood) {
-          grad.addColorStop(0, "rgba(220, 38, 38, 0.85)");
-          grad.addColorStop(0.55, "rgba(153, 27, 27, 0.55)");
-          grad.addColorStop(1, "rgba(127, 29, 29, 0)");
+        if (mistImg) {
+          const breatheX = 1 + Math.sin(tick * 0.08 + fx.x * 0.04) * 0.05;
+          const breatheY = 1 + Math.cos(tick * 0.1 + fx.y * 0.04) * 0.06;
+          const targetW = 166 * sc * breatheX;
+          const targetH = (mistImg.height / mistImg.width) * 166 * sc * breatheY;
+          const driftX = Math.sin(tick * 0.05 + fx.x * 0.03) * 3.5;
+          ctx.imageSmoothingEnabled = false;
+          ctx.globalAlpha = fade * 0.92;
+          ctx.drawImage(mistImg, sx - targetW * 0.5 + driftX, sy - targetH + 14 * sc, targetW, targetH);
+          // Subtle soft ground glow under the billowing cloud
+          ctx.globalCompositeOperation = "lighter";
+          ctx.globalAlpha = fade * 0.22;
+          ctx.drawImage(mistImg, sx - targetW * 0.48 - driftX * 0.5, sy - targetH + 12 * sc, targetW * 0.96, targetH * 0.96);
         } else {
-          grad.addColorStop(0, "rgba(249, 115, 22, 0.85)");
-          grad.addColorStop(0.55, "rgba(234, 88, 12, 0.5)");
-          grad.addColorStop(1, "rgba(251, 146, 60, 0)");
-        }
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.ellipse(sx, sy - 12, 74, 34, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // Swirling mist puffs
-        for (let m = 0; m < 5; m++) {
-          const ang = tick * 0.06 + m * 1.25;
-          const mx = sx + Math.cos(ang) * 34;
-          const my = sy - 14 + Math.sin(ang) * 14;
-          ctx.fillStyle = fx.isShadow
-            ? "rgba(148, 163, 184, 0.42)"
-            : fx.isBlood
-            ? "rgba(251, 113, 133, 0.45)"
-            : "rgba(253, 186, 116, 0.45)";
+          ctx.globalAlpha = fade * 0.55;
+          const grad = ctx.createRadialGradient(sx, sy - 10, 8, sx, sy - 10, 74 * sc);
+          if (fx.isShadow) {
+            grad.addColorStop(0, "rgba(30, 41, 59, 0.90)");
+            grad.addColorStop(0.55, "rgba(88, 28, 135, 0.52)");
+            grad.addColorStop(1, "rgba(15, 23, 42, 0)");
+          } else if (fx.isBlood) {
+            grad.addColorStop(0, "rgba(220, 38, 38, 0.85)");
+            grad.addColorStop(0.55, "rgba(153, 27, 27, 0.55)");
+            grad.addColorStop(1, "rgba(127, 29, 29, 0)");
+          } else {
+            grad.addColorStop(0, "rgba(249, 115, 22, 0.85)");
+            grad.addColorStop(0.55, "rgba(234, 88, 12, 0.5)");
+            grad.addColorStop(1, "rgba(251, 146, 60, 0)");
+          }
+          ctx.fillStyle = grad;
           ctx.beginPath();
-          ctx.arc(mx, my, 12 + Math.sin(ang * 2) * 3, 0, Math.PI * 2);
+          ctx.ellipse(sx, sy - 12, 74 * sc, 34 * sc, 0, 0, Math.PI * 2);
           ctx.fill();
         }
         ctx.restore();
@@ -6212,67 +8404,105 @@
         ctx.globalAlpha = Math.min(1, alpha * 1.4);
         ctx.translate(sx, sy);
         if (fx.kind === "bullet") {
+          const bulletImg = window.sprites && window.sprites.get("vfx_raven_bullet");
           ctx.scale(fx.facing, 1);
-          // Sleek Eclipse golden-white piercing bullet tracer!
-          ctx.fillStyle = fx.poison ? "#a855f7" : "#d4af37";
-          ctx.fillRect(-16, -2.5, 22, 5);
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(-4, -1.2, 12, 2.4);
-        } else if (fx.kind === "shuriken") {
-          ctx.rotate(tick * 0.55);
-          ctx.fillStyle = "#e2e8f0";
-          ctx.strokeStyle = "#a855f7";
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          for (let k = 0; k < 4; k++) {
-            const a = (k * Math.PI) / 2;
-            ctx.lineTo(Math.cos(a) * 9, Math.sin(a) * 9);
-            ctx.lineTo(Math.cos(a + Math.PI / 4) * 3, Math.sin(a + Math.PI / 4) * 3);
+          if (bulletImg) {
+            ctx.imageSmoothingEnabled = false;
+            const bh = fx.poison ? 26 : 22;
+            const bw = (bulletImg.width / bulletImg.height) * bh;
+            ctx.drawImage(bulletImg, -bw * 0.62, -bh * 0.5, bw, bh);
+          } else {
+            ctx.fillStyle = fx.poison ? "#a855f7" : "#d4af37";
+            ctx.fillRect(-16, -2.5, 22, 5);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(-4, -1.2, 12, 2.4);
           }
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
+        } else if (fx.kind === "shuriken") {
+          const shurikenImg = window.sprites && window.sprites.get("vfx_raven_shuriken");
+          ctx.rotate(tick * 0.55);
+          if (shurikenImg) {
+            ctx.imageSmoothingEnabled = false;
+            const sh = 34;
+            const sw = (shurikenImg.width / shurikenImg.height) * sh;
+            ctx.drawImage(shurikenImg, -sw * 0.5, -sh * 0.5, sw, sh);
+          } else {
+            ctx.fillStyle = "#e2e8f0";
+            ctx.strokeStyle = "#a855f7";
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            for (let k = 0; k < 4; k++) {
+              const a = (k * Math.PI) / 2;
+              ctx.lineTo(Math.cos(a) * 9, Math.sin(a) * 9);
+              ctx.lineTo(Math.cos(a + Math.PI / 4) * 3, Math.sin(a + Math.PI / 4) * 3);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          }
         } else {
-          // Throwing Knife with violet poison glow!
+          // Throwing Poison Kunai Barrage sprite (from Pack A)!
+          const kunaiImg = window.sprites && window.sprites.get("vfx_proj_raven");
           ctx.scale(fx.facing, 1);
-          ctx.fillStyle = "#c084fc";
-          ctx.beginPath();
-          ctx.moveTo(-10, -2);
-          ctx.lineTo(12, 0);
-          ctx.lineTo(-10, 2);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(-2, -1, 10, 2);
+          if (fx.vy) ctx.rotate(Math.atan2(fx.vy, Math.abs(fx.vx) || 10) * 0.45);
+          if (kunaiImg) {
+            ctx.imageSmoothingEnabled = false;
+            const kh = 32;
+            const kw = (kunaiImg.width / kunaiImg.height) * kh;
+            ctx.drawImage(kunaiImg, -kw * 0.48, -kh * 0.5, kw, kh);
+          } else {
+            ctx.fillStyle = "#c084fc";
+            ctx.beginPath();
+            ctx.moveTo(-10, -2);
+            ctx.lineTo(12, 0);
+            ctx.lineTo(-10, 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(-2, -1, 10, 2);
+          }
         }
         ctx.restore();
       } else if (fx.type === "eclipse_x_finisher") {
-        // Lv.3 Finisher: Full-Screen Golden X-Cross Snipe beams!
+        // Lv.3 Finisher: Full-Screen Golden-Violet Eclipse X-Cross Slash!
         const cx = Math.floor(fx.x - cameraX);
-        const cy = Math.floor(fx.y - 44);
+        const cy = Math.floor(fx.y - 52);
+        const xImg = window.sprites && window.sprites.get("vfx_raven_eclipse_x");
         ctx.save();
         ctx.globalAlpha = Math.min(1, alpha * 1.4);
         // Subtle dark eclipse flash vignette
         ctx.fillStyle = `rgba(10, 8, 18, ${alpha * 0.35})`;
         ctx.fillRect(0, 0, W, H);
-        // Giant golden outer X beams
-        ctx.strokeStyle = "#fcd34d";
-        ctx.lineWidth = 18 * alpha + 4;
-        ctx.beginPath();
-        ctx.moveTo(cx - 420, cy - 260);
-        ctx.lineTo(cx + 420, cy + 260);
-        ctx.moveTo(cx + 420, cy - 260);
-        ctx.lineTo(cx - 420, cy + 260);
-        ctx.stroke();
-        // Razor-bright white core X beams
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 6 * alpha + 1.5;
-        ctx.beginPath();
-        ctx.moveTo(cx - 420, cy - 260);
-        ctx.lineTo(cx + 420, cy + 260);
-        ctx.moveTo(cx + 420, cy - 260);
-        ctx.lineTo(cx - 420, cy + 260);
-        ctx.stroke();
+        if (xImg) {
+          const burstScale = 0.85 + (1 - alpha) * 0.38;
+          const xh = 340 * burstScale;
+          const xw = (xImg.width / xImg.height) * xh;
+          ctx.imageSmoothingEnabled = false;
+          ctx.globalCompositeOperation = "lighter";
+          ctx.globalAlpha = Math.min(1, alpha * 0.55);
+          ctx.drawImage(xImg, cx - xw * 0.55, cy - xh * 0.55, xw * 1.1, xh * 1.1);
+          ctx.globalCompositeOperation = "source-over";
+          ctx.globalAlpha = Math.min(1, alpha * 1.35);
+          ctx.drawImage(xImg, cx - xw * 0.5, cy - xh * 0.5, xw, xh);
+        } else {
+          // Giant golden outer X beams
+          ctx.strokeStyle = "#fcd34d";
+          ctx.lineWidth = 18 * alpha + 4;
+          ctx.beginPath();
+          ctx.moveTo(cx - 420, cy - 260);
+          ctx.lineTo(cx + 420, cy + 260);
+          ctx.moveTo(cx + 420, cy - 260);
+          ctx.lineTo(cx - 420, cy + 260);
+          ctx.stroke();
+          // Razor-bright white core X beams
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 6 * alpha + 1.5;
+          ctx.beginPath();
+          ctx.moveTo(cx - 420, cy - 260);
+          ctx.lineTo(cx + 420, cy + 260);
+          ctx.moveTo(cx + 420, cy - 260);
+          ctx.lineTo(cx - 420, cy + 260);
+          ctx.stroke();
+        }
         ctx.restore();
       } else if (fx.type === "shaka_heaven_pillar") {
         // Shaka Lv.3 Finisher: 《萬臂合一・金光天墜》 Golden Sky Pillar!
@@ -6322,162 +8552,291 @@
     }
   }
 
-  // --- Ultimate Cutscene Overlay ---
+  // --- Arcade Super-Art Cut-in & Expanding 3x3 Aura Burst Overlay (All 9 Heroes!) ---
   function drawReloadLightningOverlay() {
-    ctx.fillStyle = "rgba(15, 23, 42, 0.38)";
-    ctx.fillRect(0, 0, W, H);
-
+    const cid = (player && player.charId) || "mustache";
+    const prog = Math.max(0, Math.min(1, 1 - reloadCutsceneTimer / 72)); // 0 -> 1 over 1.2s
     const sx = player.x - cameraX;
-    const sy = player.y - 36;
+    const sy = player.y - 38;
 
-    if (isNightHeronHero()) {
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 2.5;
-      for (let i = 0; i < 3; i++) {
-        const r = 36 + i * 24 + Math.sin(tick * 0.28 + i) * 7;
-        ctx.beginPath();
-        ctx.ellipse(sx, sy + 6, r, r * 0.36, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.fillStyle = "#7dd3fc";
-      ctx.font = "900 24px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText("👞 末班起飛! 雨夜天翔水刃全開!", W / 2, 74);
-    } else if (isIronFistHero()) {
-      ctx.strokeStyle = "#f59e0b";
-      ctx.lineWidth = 2.5;
-      for (let i = 0; i < 3; i++) {
-        const r = 36 + i * 24 + Math.sin(tick * 0.28 + i) * 7;
-        ctx.beginPath();
-        ctx.ellipse(sx, sy + 6, r, r * 0.36, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.fillStyle = "#fcd34d";
-      ctx.font = "900 24px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText("🥊 末班起飛! 崩山轟拳解放!", W / 2, 74);
-    } else if (isAlice()) {
-      // Alice Crimson-Gold Linguistic Domain Cutscene Rings!
-      ctx.strokeStyle = "#e11d48";
-      ctx.lineWidth = 2.5;
-      for (let i = 0; i < 3; i++) {
-        const r = 36 + i * 24 + Math.sin(tick * 0.28 + i) * 7;
-        ctx.beginPath();
-        ctx.ellipse(sx, sy + 6, r, r * 0.36, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.fillStyle = "#fb7185";
-      ctx.font = "900 24px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText("🌹 絕對契約! 言靈領域展開!", W / 2, 74);
-    } else if (isShaka()) {
-      // Shaka Divine Golden Dharma Wheel & Thousand-Hand Awakening Rings!
-      ctx.strokeStyle = "#fde68a";
-      ctx.lineWidth = 2.5;
-      for (let i = 0; i < 3; i++) {
-        const r = 38 + i * 24 + Math.sin(tick * 0.25 + i) * 6;
-        ctx.beginPath();
-        ctx.arc(sx, sy - 6, r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.fillStyle = "#fde68a";
-      ctx.font = "900 24px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText("☸ 千手觀音! 萬臂群控覺醒!", W / 2, 74);
-    } else if (isRaven()) {
-      // Raven Eclipse Society Golden-Obsidian Dual-Pistol Awakening Rings!
-      ctx.strokeStyle = "#d4af37";
-      ctx.lineWidth = 2.5;
-      for (let i = 0; i < 3; i++) {
-        const r = 34 + i * 22 + Math.sin(tick * 0.25 + i) * 6;
-        ctx.beginPath();
-        ctx.ellipse(sx, sy + 6, r, r * 0.38, (tick * 0.08 + i) * 0.4, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.fillStyle = "#fcd34d";
-      ctx.font = "900 24px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText("🐦‍⬛ 日蝕處決! ECLIPSE AKIMBO!", W / 2, 74);
-    } else if (isMomo()) {
-      // Crimson Vampire Awakening Bat-Swarm Rings!
-      ctx.strokeStyle = "#ef4444";
-      ctx.lineWidth = 2.5;
-      for (let i = 0; i < 3; i++) {
-        const r = 34 + i * 22 + Math.sin(tick * 0.25 + i) * 6;
-        ctx.beginPath();
-        ctx.ellipse(sx, sy + 6, r, r * 0.38, -(tick * 0.08 + i) * 0.4, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.fillStyle = "#fb7185";
-      ctx.font = "900 24px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText("🦇 吸血鬼覺醒! VAMPIRE MODE!", W / 2, 74);
-    } else if (isSamurai()) {
-      // Swirling sword-qi rings & dramatic blade-storm lines!
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 2.5;
-      for (let i = 0; i < 3; i++) {
-        const r = 34 + i * 22 + Math.sin(tick * 0.25 + i) * 6;
-        ctx.beginPath();
-        ctx.ellipse(sx, sy + 6, r, r * 0.38, (tick * 0.08 + i) * 0.4, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.fillStyle = hasSamuraiDualMode() ? "#c084fc" : "#38bdf8";
-      ctx.font = "900 22px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText(hasSamuraiDualMode() ? "⚔️ 雙刀模式・交叉突進! DUAL BLADE!" : "武士刀亂舞! BLADE STORM!", W / 2, 74);
-    } else {
-      // Jagged electric arcs shooting into Mustache Hero!
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 3;
-      for (let i = 0; i < 6; i++) {
-        const angle = (i / 6) * Math.PI * 2 + tick * 0.2;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        let cx = sx;
-        let cy = sy;
-        for (let step = 1; step <= 4; step++) {
-          cx += Math.cos(angle) * 28 + (Math.random() - 0.5) * 18;
-          cy += Math.sin(angle) * 24 + (Math.random() - 0.5) * 18;
-          ctx.lineTo(cx, cy);
-        }
-        ctx.stroke();
-      }
+    const cutinThemes = {
+      fallen: {
+        primary: "#e9d5ff",
+        glow: "#a855f7",
+        bgDark: "rgba(30, 16, 48, 0.94)",
+        title: "🪽 審判之痕！三階骸靈斬擊解放",
+        sub: "MARK OF JUDGMENT • FALLEN ANGEL",
+        portrait: "hero_fallen_portrait",
+      },
+      rose: {
+        primary: "#fb923c",
+        glow: "#ec4899",
+        bgDark: "rgba(58, 12, 28, 0.92)",
+        title: "🔥 群體暗示！三階煉獄火拳解放",
+        sub: "PSYCHIC DOMINION • INFERNO FIST",
+        portrait: "hero_rose_portrait",
+      },
+      ling: {
+        primary: "#2dd4bf",
+        glow: "#fbbf24",
+        bgDark: "rgba(10, 38, 42, 0.92)",
+        title: "🏮 四象靈契！青龍白虎朱雀玄武降臨",
+        sub: "FOUR SYMBOLS • DIVINE BEASTS",
+        portrait: "hero_ling_portrait",
+      },
+      magic: {
+        primary: "#c084fc",
+        glow: "#a855f7",
+        bgDark: "rgba(38, 12, 68, 0.92)",
+        title: "🔮 開門・裂界！暗影女皇降臨",
+        sub: "UMBRAL SOVEREIGN AWAKENING",
+        portrait: "hero_magic_portrait",
+      },
+      nightheron: {
+        primary: "#7dd3fc",
+        glow: "#0284c7",
+        bgDark: "rgba(10, 32, 66, 0.92)",
+        title: "👞 末班起飛！雨夜天翔水刃全開",
+        sub: "MIDNIGHT FLIGHT • RAIN BLADE",
+        portrait: "hero_nightheron_portrait",
+      },
+      ironfist: {
+        primary: "#fcd34d",
+        glow: "#f59e0b",
+        bgDark: "rgba(56, 26, 8, 0.92)",
+        title: "🥊 末班起飛！崩山轟拳解放",
+        sub: "MOUNTAIN SHATTER • OVERDRIVE",
+        portrait: "hero_ironfist_portrait",
+      },
+      alice: {
+        primary: "#fb7185",
+        glow: "#e11d48",
+        bgDark: "rgba(62, 10, 26, 0.92)",
+        title: "🌹 絕對契約！言靈領域展開",
+        sub: "LINGUISTIC DOMAIN • SUBMIT",
+        portrait: "hero_alice_portrait",
+      },
+      shaka: {
+        primary: "#fde68a",
+        glow: "#f59e0b",
+        bgDark: "rgba(48, 32, 8, 0.92)",
+        title: "☸ 千手觀音！萬臂群控覺醒",
+        sub: "THOUSAND-ARM DHARMA AWAKENING",
+        portrait: "hero_shaka_portrait",
+      },
+      raven: {
+        primary: "#fcd34d",
+        glow: "#d4af37",
+        bgDark: "rgba(24, 18, 36, 0.92)",
+        title: "🐦‍⬛ 日蝕處決！雙槍槍鬥術",
+        sub: "ECLIPSE AKIMBO • GUN KATA",
+        portrait: "hero_raven_portrait",
+      },
+      momo: {
+        primary: "#fb7185",
+        glow: "#dc2626",
+        bgDark: "rgba(64, 10, 18, 0.92)",
+        title: "🦇 血月覺醒！吸血鬼型態解放",
+        sub: "CRIMSON VAMPIRE AWAKENING",
+        portrait: "hero_momo_vampire_portrait",
+      },
+      samurai: {
+        primary: hasSamuraiDualMode() ? "#c084fc" : "#38bdf8",
+        glow: hasSamuraiDualMode() ? "#9333ea" : "#0284c7",
+        bgDark: "rgba(12, 28, 52, 0.92)",
+        title: hasSamuraiDualMode() ? "⚔️ 雙刀模式・交叉突進！" : "⚔️ 武士刀亂舞！劍氣傍身",
+        sub: hasSamuraiDualMode() ? "DUAL KATANA • X-CROSS STORM" : "BLADE STORM • SWORD AURA",
+        portrait: "hero_samurai_portrait",
+      },
+      mustache: {
+        primary: "#fcd34d",
+        glow: "#38bdf8",
+        bgDark: "rgba(18, 32, 56, 0.92)",
+        title: "👨🏻 手臂上膛！爆氣重拳解放",
+        sub: "ARM RELOAD • OVERCLOCKED",
+        portrait: "hero_mustache_portrait",
+      },
+    };
+    const theme = cutinThemes[cid] || cutinThemes.mustache;
 
-      ctx.fillStyle = "#fcd34d";
-      ctx.font = "900 22px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText("ARM RELOAD!", W / 2, 74);
+    // 1. Cinematic Dark Backdrop + Brief Impact Flash
+    ctx.save();
+    ctx.fillStyle = "rgba(8, 12, 24, 0.48)";
+    ctx.fillRect(0, 0, W, H);
+    if (prog < 0.14) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${(1 - prog / 0.14) * 0.42})`;
+      ctx.fillRect(0, 0, W, H);
     }
+
+    // 2. Vertical Sky Energy Pillar shooting through the Hero
+    const pillarAlpha = prog < 0.15 ? prog / 0.15 : Math.max(0, 1 - (prog - 0.15) / 0.85);
+    const pillarW = 54 + Math.sin(tick * 0.35) * 8;
+    const pGrad = ctx.createLinearGradient(sx - pillarW, 0, sx + pillarW, 0);
+    pGrad.addColorStop(0, "rgba(255,255,255,0)");
+    pGrad.addColorStop(0.32, theme.glow);
+    pGrad.addColorStop(0.5, "#ffffff");
+    pGrad.addColorStop(0.68, theme.glow);
+    pGrad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = pillarAlpha * 0.46;
+    ctx.fillStyle = pGrad;
+    ctx.fillRect(sx - pillarW, 0, pillarW * 2, player.y + 8);
+
+    // 3. Expanding & Spinning 3x3 Character-Exclusive Magic Aura Burst!
+    const aura = window.sprites && window.sprites.get(`aura_${cid}`);
+    if (aura) {
+      const burstSize = 68 + prog * 138;
+      const burstAlpha = prog < 0.18 ? prog / 0.18 : Math.max(0, 1 - (prog - 0.18) / 0.82);
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(prog * Math.PI * 1.4);
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = burstAlpha * 0.88;
+      ctx.drawImage(aura, -burstSize * 0.5, -burstSize * 0.5, burstSize, burstSize);
+      ctx.restore();
+    }
+    ctx.restore();
+
+    // 4. Arcade Fighting-Game Super-Art Cut-in Banner (Slides in fast -> holds -> zips out!)
+    let slideX = 0;
+    if (prog < 0.16) {
+      const t = 1 - prog / 0.16;
+      slideX = -W * t * t;
+    } else if (prog > 0.82) {
+      const t = (prog - 0.82) / 0.18;
+      slideX = W * t * t;
+    }
+
+    const bandY = 66;
+    const bandH = 62;
+    ctx.save();
+    ctx.translate(Math.round(slideX), 0);
+
+    // Main dark slanted banner strip
+    ctx.fillStyle = theme.bgDark;
+    ctx.fillRect(0, bandY, W, bandH);
+
+    // Animated diagonal anime speed lines inside banner
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, bandY, W, bandH);
+    ctx.clip();
+    ctx.strokeStyle = theme.primary;
+    ctx.globalAlpha = 0.24;
+    ctx.lineWidth = 2;
+    for (let i = -2; i < 14; i++) {
+      const lx = ((i * 58 + tick * 14) % (W + 120)) - 60;
+      ctx.beginPath();
+      ctx.moveTo(lx, bandY + bandH);
+      ctx.lineTo(lx + 26, bandY);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Glowing top & bottom neon trim bars
+    ctx.fillStyle = theme.primary;
+    ctx.fillRect(0, bandY, W, 3);
+    ctx.fillRect(0, bandY + bandH - 3, W, 3);
+
+    // Slanted Hero Portrait Cut-in Box on left side
+    const pImg = window.sprites && window.sprites.get(theme.portrait);
+    if (pImg) {
+      const px = 44;
+      const py = bandY - 8;
+      const pw = 82;
+      const ph = bandH + 16;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(px + 14, py);
+      ctx.lineTo(px + pw + 14, py);
+      ctx.lineTo(px + pw, py + ph);
+      ctx.lineTo(px, py + ph);
+      ctx.closePath();
+      ctx.fillStyle = "#090d16";
+      ctx.fill();
+      ctx.save();
+      ctx.clip();
+      ctx.drawImage(pImg, 0, 0, pImg.width, pImg.height, px, py, pw + 14, ph);
+      ctx.restore();
+      ctx.strokeStyle = theme.primary;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Crisp Super-Art Title + English Subtitle
+    ctx.textAlign = "left";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.92)";
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 21px monospace";
+    ctx.fillText(theme.title, 152, bandY + 32);
+
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = theme.primary;
+    ctx.font = "bold 10px monospace";
+    ctx.fillText(`⚡ ${theme.sub} ⚡`, 154, bandY + 50);
+
+    ctx.restore();
   }
 
-  // --- Comic Speech Bubble (For Brisket quote!) ---
+  // --- Cinematic Glassmorphism Comms Subtitle Bar (Never obstructs battlefield!) ---
   function drawSpeechBubble(p) {
     const text = p.speechText;
-    ctx.font = "bold 11px monospace";
-    const tw = Math.min(260, ctx.measureText(text).width + 20);
-    const bx = Math.max(12, Math.min(W - tw - 12, p.x - cameraX - tw / 2));
-    const by = Math.max(54, p.y - (isBuff() ? 116 : 96) - p.z);
+    if (!text) return;
+    ctx.save();
+    ctx.font = "bold 10.5px monospace";
+    const textW = ctx.measureText(text).width;
+    const barW = Math.min(430, Math.max(210, textW + 58));
+    const barH = 30;
+    const bx = Math.round((W - barW) / 2);
+    const by = 52;
+    const alpha = p.speechTimer < 16 ? p.speechTimer / 16 : 1;
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-    ctx.fillStyle = "#ffffff";
-    ctx.strokeStyle = "#0f172a";
-    ctx.lineWidth = 2;
-    ctx.fillRect(bx, by, tw, 26);
-    ctx.strokeRect(bx, by, tw, 26);
+    // Dark frosted glass backdrop with subtle top highlight
+    const bgGrad = ctx.createLinearGradient(bx, by, bx, by + barH);
+    bgGrad.addColorStop(0, "rgba(15, 23, 42, 0.90)");
+    bgGrad.addColorStop(1, "rgba(9, 13, 24, 0.84)");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(bx, by, barW, barH);
 
-    // Little tail
-    const tx = Math.max(bx + 12, Math.min(bx + tw - 12, p.x - cameraX));
-    ctx.beginPath();
-    ctx.moveTo(tx - 5, by + 26);
-    ctx.lineTo(tx, by + 33);
-    ctx.lineTo(tx + 5, by + 26);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    // Accent bar on left + crisp metallic border
+    const accentCol = isFallen() ? "#c084fc" : isRose() ? "#fb923c" : isLing() ? "#2dd4bf" : isMagic() ? "#c084fc" : isAlice() ? "#fb7185" : isShaka() ? "#fde047" : isSamurai() ? "#38bdf8" : "#f59e0b";
+    ctx.fillStyle = accentCol;
+    ctx.fillRect(bx, by, 3, barH);
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx, by, barW, barH);
 
-    ctx.fillStyle = "#0f172a";
-    ctx.textAlign = "center";
-    ctx.fillText(text, bx + tw / 2, by + 17);
+    // Mini hero portrait inside comms bar
+    const pKey =
+      isFallen() ? "hero_fallen_portrait" :
+      isRose() ? "hero_rose_portrait" :
+      isLing() ? "hero_ling_portrait" :
+      isMagic() ? "hero_magic_portrait" :
+      isNightHeronHero() ? "hero_nightheron_portrait" :
+      isIronFistHero() ? "hero_ironfist_portrait" :
+      isAlice() ? "hero_alice_portrait" :
+      isShaka() ? "hero_shaka_portrait" :
+      isRaven() ? "hero_raven_portrait" :
+      isMomo() ? (isBuff() ? "hero_momo_vampire_portrait" : "hero_momo_portrait") :
+      isSamurai() ? "hero_samurai_portrait" :
+      "hero_mustache_portrait";
+    const pImg = window.sprites && window.sprites.get(pKey);
+    if (pImg) {
+      ctx.drawImage(pImg, 0, 0, pImg.width, pImg.height, bx + 7, by + 3, 24, 24);
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx + 7, by + 3, 24, 24);
+    }
+
+    ctx.fillStyle = "#f8fafc";
+    ctx.textAlign = "left";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+    ctx.shadowBlur = 4;
+    ctx.fillText(text, bx + 38, by + 19);
+    ctx.restore();
   }
 
   function drawParticles() {
@@ -6504,20 +8863,81 @@
     }
   }
 
-  // --- Arcade HUD ---
+  // --- Beveled Gunmetal-Steel Arcade HUD (Matches AAA Fighting-Game Steel Frame!) ---
+  function drawSlantedRect(x, y, w, h, slant = 7) {
+    ctx.beginPath();
+    ctx.moveTo(x + slant, y);
+    ctx.lineTo(x + w + slant, y);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.closePath();
+  }
+
+  function drawChamferedOctagon(x, y, w, h, cut = 7) {
+    ctx.beginPath();
+    ctx.moveTo(x + cut, y);
+    ctx.lineTo(x + w - cut, y);
+    ctx.lineTo(x + w, y + cut);
+    ctx.lineTo(x + w, y + h - cut);
+    ctx.lineTo(x + w - cut, y + h);
+    ctx.lineTo(x + cut, y + h);
+    ctx.lineTo(x, y + h - cut);
+    ctx.lineTo(x, y + cut);
+    ctx.closePath();
+  }
+
   function drawHUD() {
     if (!player) return;
 
-    // Top-left panel
-    ctx.fillStyle = "rgba(15, 23, 42, 0.78)";
-    ctx.fillRect(10, 10, 214, 48);
-    ctx.strokeStyle = isBuff() ? "#38bdf8" : "#f59e0b";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(10, 10, 214, 48);
+    // 1. Welded Gunmetal-Steel Outer Gauge Housing (slanted right edge + metallic bevel)
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.72)";
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 3;
+    ctx.beginPath();
+    ctx.moveTo(54, 12);
+    ctx.lineTo(256, 12);
+    ctx.lineTo(260, 16);
+    ctx.lineTo(247, 54);
+    ctx.lineTo(242, 57);
+    ctx.lineTo(54, 57);
+    ctx.closePath();
+    const steelOuter = ctx.createLinearGradient(54, 12, 54, 57);
+    steelOuter.addColorStop(0, "#cbd5e1");
+    steelOuter.addColorStop(0.18, "#475569");
+    steelOuter.addColorStop(0.55, "#1e293b");
+    steelOuter.addColorStop(0.88, "#334155");
+    steelOuter.addColorStop(1, "#0f172a");
+    ctx.fillStyle = steelOuter;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.strokeStyle = isBuff() ? "#7dd3fc" : "#94a3b8";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
 
-    // Portrait icon (HD Sprite Headshot for Mustache Hero / Street Samurai / Momo / Raven!)
+    // Inner recessed dark metallic trough
+    ctx.beginPath();
+    ctx.moveTo(57, 15);
+    ctx.lineTo(254, 15);
+    ctx.lineTo(243, 53);
+    ctx.lineTo(57, 53);
+    ctx.closePath();
+    ctx.fillStyle = "#0b1120";
+    ctx.fill();
+    ctx.restore();
+
+    // 2. Left Chamfered Octagonal Brushed-Steel Portrait Frame (50x50)
     const portraitImg = window.sprites && window.sprites.get(
-      isNightHeronHero()
+      isFallen()
+        ? "hero_fallen_portrait"
+        : isRose()
+        ? "hero_rose_portrait"
+        : isLing()
+        ? "hero_ling_portrait"
+        : isMagic()
+        ? "hero_magic_portrait"
+        : isNightHeronHero()
         ? "hero_nightheron_portrait"
         : isIronFistHero()
         ? "hero_ironfist_portrait"
@@ -6531,73 +8951,140 @@
         ? (isBuff() ? "hero_momo_vampire_portrait" : "hero_momo_portrait")
         : isSamurai()
         ? "hero_samurai_portrait"
-        : isBuff()
-        ? "hero_mustache_buff"
-        : "hero_mustache_normal"
+        : "hero_mustache_portrait"
     );
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.78)";
+    ctx.shadowBlur = 8;
+    drawChamferedOctagon(9, 8, 52, 52, 7);
+    const pBevel = ctx.createLinearGradient(9, 8, 9, 60);
+    pBevel.addColorStop(0, "#e2e8f0");
+    pBevel.addColorStop(0.25, "#64748b");
+    pBevel.addColorStop(0.7, "#1e293b");
+    pBevel.addColorStop(1, "#94a3b8");
+    ctx.fillStyle = pBevel;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Inner portrait clip
+    drawChamferedOctagon(13, 12, 44, 44, 5);
+    ctx.fillStyle = "#090d16";
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
     if (portraitImg) {
-      ctx.fillStyle = isNightHeronHero() ? "#0c1b36" : isIronFistHero() ? "#0c1e3d" : isAlice() ? "#3f0917" : isShaka() ? "#0b2e33" : isRaven() ? "#111827" : isMomo() ? (isBuff() ? "#450a0a" : "#0b3b3e") : isSamurai() ? "#0b313a" : "#7c2d12";
-      ctx.fillRect(16, 16, 36, 36);
-      if (isNightHeronHero() || isIronFistHero() || isAlice() || isShaka() || isRaven() || isMomo() || isSamurai()) {
-        ctx.drawImage(portraitImg, 0, 0, portraitImg.width, portraitImg.height, 16, 16, 36, 36);
-      } else {
-        const cropH = portraitImg.height * 0.40;
-        const cropW = Math.min(portraitImg.width, cropH);
-        const cropX = (portraitImg.width - cropW) / 2;
-        ctx.drawImage(portraitImg, cropX, 0, cropW, cropH, 16, 16, 36, 36);
-      }
-    } else if (isSamurai()) {
-      ctx.fillStyle = "#18181b";
-      ctx.fillRect(16, 16, 36, 36);
-      // Curly brown hair
-      ctx.fillStyle = "#3e2723";
-      ctx.fillRect(20, 18, 28, 12);
-      ctx.fillRect(18, 22, 6, 12);
-      ctx.fillRect(44, 22, 6, 12);
-      // Face
-      ctx.fillStyle = "#f5c29b";
-      ctx.fillRect(24, 24, 20, 17);
-      // Thick black glasses + blue eyes
-      ctx.fillStyle = "#09090b";
-      ctx.fillRect(25, 28, 8, 6);
-      ctx.fillRect(35, 28, 8, 6);
-      ctx.fillRect(33, 30, 2, 2);
-      ctx.fillStyle = "#38bdf8";
-      ctx.fillRect(27, 30, 4, 2);
-      ctx.fillRect(37, 30, 4, 2);
-    } else {
-      ctx.fillStyle = "#ea580c";
-      ctx.fillRect(16, 16, 36, 36);
-      ctx.fillStyle = "#fdba74";
-      ctx.fillRect(24, 22, 20, 18);
-      ctx.fillStyle = "#1c1917";
-      ctx.fillRect(23, 19, 22, 5);
-      // Mustache in portrait
-      ctx.fillStyle = "#29150b";
-      ctx.fillRect(26, 33, 16, 4);
+      ctx.drawImage(portraitImg, 0, 0, portraitImg.width, portraitImg.height, 13, 12, 44, 44);
     }
+    ctx.restore();
+    ctx.strokeStyle = isBuff() ? "#38bdf8" : "rgba(226, 232, 240, 0.45)";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.restore();
 
-    // HP Bar
-    ctx.fillStyle = "#334155";
-    ctx.fillRect(58, 18, 156, 12);
-    const hpRatio = player.hp / player.maxHp;
-    ctx.fillStyle = hpRatio > 0.35 ? "#22c55e" : "#ef4444";
-    ctx.fillRect(58, 18, Math.floor(156 * hpRatio), 12);
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 9px monospace";
+    // 3. 3D Glossy Emerald HP Bar with Delayed Red Damage Trail & 4 Clean Segments
+    const barX = 64;
+    const barW = 180;
+    ctx.save();
+    drawSlantedRect(barX, 18, barW, 14, 5);
+    ctx.fillStyle = "#090f1d";
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    const trailRatio = Math.max(0, Math.min(1, displayHp / player.maxHp));
+    const hpRatio = Math.max(0, player.hp / player.maxHp);
+    if (trailRatio > hpRatio) {
+      ctx.fillStyle = "#f43f5e";
+      ctx.fillRect(barX, 18, Math.floor((barW + 6) * trailRatio), 14);
+    }
+    const hpGrad = ctx.createLinearGradient(barX, 18, barX, 32);
+    if (hpRatio > 0.35) {
+      hpGrad.addColorStop(0, "#86efac");
+      hpGrad.addColorStop(0.32, "#22c55e");
+      hpGrad.addColorStop(0.78, "#16a34a");
+      hpGrad.addColorStop(1, "#14532d");
+    } else {
+      hpGrad.addColorStop(0, Math.floor(tick / 8) % 2 === 0 ? "#fda4af" : "#fdba74");
+      hpGrad.addColorStop(0.45, "#ef4444");
+      hpGrad.addColorStop(1, "#7f1d1d");
+    }
+    ctx.fillStyle = hpGrad;
+    ctx.fillRect(barX, 18, Math.floor((barW + 6) * hpRatio), 14);
+    // Crisp top glass highlight + 4 segment lines
+    ctx.fillStyle = "rgba(255, 255, 255, 0.30)";
+    ctx.fillRect(barX, 18, Math.floor((barW + 6) * hpRatio), 3);
+    ctx.fillStyle = "rgba(15, 23, 42, 0.28)";
+    for (let s = 1; s < 4; s++) {
+      ctx.fillRect(barX + Math.round((barW * s) / 4), 18, 1, 14);
+    }
+    ctx.restore();
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.55)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+    ctx.shadowBlur = 3;
+    ctx.font = "900 9.5px monospace";
     ctx.textAlign = "left";
-    ctx.fillText(`HP ${player.hp}/${player.maxHp}`, 62, 27);
+    ctx.fillText(`HP ${player.hp}/${player.maxHp}`, barX + 7, 29);
+    ctx.restore();
 
-    // Reload / Sword Aura / Vampire Bar
-    ctx.fillStyle = "#334155";
-    ctx.fillRect(58, 36, 156, 12);
+    // 4. 3D Glossy Golden Ultimate Bar — Preserving EVERY Hero's Full Ultimate Text + Beveled Silver [R] Keycap!
+    ctx.save();
+    drawSlantedRect(barX - 3, 36, barW - 2, 14, 5);
+    ctx.fillStyle = "#090f1d";
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    const ultFill = isBuff() ? player.buffTimer / player.buffMax : player.reloadGauge / 100;
+    const isFull = isBuff() || player.reloadGauge >= 100;
+    const ultGrad = ctx.createLinearGradient(barX - 3, 36, barX - 3, 50);
     if (isBuff()) {
-      const bRatio = player.buffTimer / player.buffMax;
-      ctx.fillStyle = isNightHeronHero() ? "#38bdf8" : isIronFistHero() ? "#f59e0b" : isAlice() ? "#e11d48" : isShaka() ? "#fde68a" : isRaven() ? "#d4af37" : isMomo() ? "#f43f5e" : "#38bdf8";
-      ctx.fillRect(58, 36, Math.floor(156 * bRatio), 12);
-      ctx.fillStyle = isAlice() ? "#fff" : "#0f172a";
-      ctx.fillText(
-        isNightHeronHero()
+      const bCol = isRose() ? "#f97316" : isLing() ? "#2dd4bf" : isMagic() ? "#c084fc" : isNightHeronHero() ? "#38bdf8" : isIronFistHero() ? "#f59e0b" : isAlice() ? "#e11d48" : isShaka() ? "#fde68a" : isRaven() ? "#d4af37" : isMomo() ? "#f43f5e" : isFallen() ? "#c084fc" : "#38bdf8";
+      ultGrad.addColorStop(0, "#ffffff");
+      ultGrad.addColorStop(0.32, bCol);
+      ultGrad.addColorStop(1, bCol);
+    } else {
+      ultGrad.addColorStop(0, "#fef9c3");
+      ultGrad.addColorStop(0.35, "#fbbf24");
+      ultGrad.addColorStop(0.8, "#f59e0b");
+      ultGrad.addColorStop(1, "#b45309");
+    }
+    ctx.fillStyle = ultGrad;
+    ctx.fillRect(barX - 3, 36, Math.floor((barW + 4) * Math.max(0, Math.min(1, ultFill))), 14);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.28)";
+    ctx.fillRect(barX - 3, 36, Math.floor((barW + 4) * Math.max(0, Math.min(1, ultFill))), 3);
+    // Shimmer light sweep when READY or BUFF!
+    if (isFull) {
+      const sweepX = ((tick * 4) % (barW + 60)) - 30;
+      const shGrad = ctx.createLinearGradient(barX + sweepX - 18, 36, barX + sweepX + 18, 36);
+      shGrad.addColorStop(0, "rgba(255,255,255,0)");
+      shGrad.addColorStop(0.5, "rgba(255,255,255,0.72)");
+      shGrad.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = shGrad;
+      ctx.fillRect(barX - 3, 36, barW + 4, 14);
+    }
+    ctx.restore();
+    ctx.strokeStyle = isFull ? "#fef08a" : "rgba(148, 163, 184, 0.45)";
+    ctx.lineWidth = isFull ? 1.3 : 1;
+    ctx.stroke();
+
+    ctx.font = "900 9px monospace";
+    ctx.textAlign = "left";
+    ctx.fillStyle = isBuff() ? (isAlice() ? "#ffffff" : "#0f172a") : isFull ? "#0f172a" : "#fefce8";
+    const ultLabel = isBuff()
+      ? (isFallen()
+          ? (unlockedUltLevel >= 3 ? "🪽 Lv.3 終末宣告・萬骸審判!" : unlockedUltLevel >= 2 ? "🪽 Lv.2 懲罪斬・天降骸靈!" : "🪽 Lv.1 裁決斬・裂風巨劍!")
+          : isRose()
+          ? (unlockedUltLevel >= 3 ? "🔥 Lv.3 煉獄拳・熾焰焚盡!" : unlockedUltLevel >= 2 ? "🔥 Lv.2 爆炎拳・火環衝擊!" : "🔥 Lv.1 燃炎拳・精神支配!")
+          : isLing()
+          ? (unlockedUltLevel >= 3 ? "🏮 四象歸一・聖獸齊衝!" : "🏮 四象靈契・聖獸降臨!")
+          : isMagic()
+          ? (unlockedUltLevel >= 3 ? "🔮 暗影女皇・深淵降臨!" : "🔮 裂界開啟・亡靈全開!")
+          : isNightHeronHero()
           ? (unlockedUltLevel >= 3 ? "👞 末班起飛・天翔準備!" : "👞 雨夜天翔・水刃全開!")
           : isIronFistHero()
           ? (unlockedUltLevel >= 3 ? "🥊 末班起飛・合體準備!" : "🥊 崩山轟拳・蒸氣全開!")
@@ -6613,55 +9100,48 @@
           ? "⚔️ 雙刀模式・交叉突進!"
           : isSamurai()
           ? "劍氣傍身! SWORD AURA"
-          : "BUFF MODE! +POCKET",
-        62,
-        45
-      );
-    } else {
-      const rRatio = player.reloadGauge / 100;
-      ctx.fillStyle = rRatio >= 1 ? (Math.floor(tick / 10) % 2 === 0 ? "#fcd34d" : "#f59e0b") : "#eab308";
-      ctx.fillRect(58, 36, Math.floor(156 * rRatio), 12);
+          : "BUFF MODE! +POCKET")
+      : player.reloadGauge >= 100
+      ? (isFallen() ? "審判之痕 READY!" : isRose() ? "煉獄火拳 READY!" : isLing() ? "四象降臨 READY!" : isMagic() ? "暗影女皇 READY!" : isNightHeronHero() ? "雨夜天翔 READY!" : isIronFistHero() ? "崩山轟拳 READY!" : isAlice() ? "言靈領域 READY!" : isShaka() ? "萬臂群控 READY!" : isRaven() ? "日蝕雙槍 READY!" : isMomo() ? "吸血鬼變身 READY!" : isSamurai() ? "武士刀亂舞 READY!" : "RELOAD READY!")
+      : (isFallen() ? `JUDGMENT ${player.reloadGauge}%` : isRose() ? `INFERNO ${player.reloadGauge}%` : isLing() ? `BEASTS ${player.reloadGauge}%` : isMagic() ? `MAGIC ${player.reloadGauge}%` : isNightHeronHero() ? `RAIN ${player.reloadGauge}%` : isIronFistHero() ? `STEAM ${player.reloadGauge}%` : isAlice() ? `VOICE ${player.reloadGauge}%` : isShaka() ? `DHARMA ${player.reloadGauge}%` : isRaven() ? `ECLIPSE ${player.reloadGauge}%` : isMomo() ? `BLOOD ${player.reloadGauge}%` : isSamurai() ? `SWORD QI ${player.reloadGauge}%` : `RELOAD ${player.reloadGauge}%`);
+    ctx.fillText(ultLabel, barX + 5, 46);
+
+    // Beveled metallic silver [R] keycap badge when Ultimate is READY!
+    if (!isBuff() && player.reloadGauge >= 100) {
+      const kx = barX + barW - 22;
+      const ky = 37.5;
+      drawSlantedRect(kx, ky, 15, 11, 2);
+      const kGrad = ctx.createLinearGradient(kx, ky, kx, ky + 11);
+      kGrad.addColorStop(0, "#f8fafc");
+      kGrad.addColorStop(0.55, "#cbd5e1");
+      kGrad.addColorStop(1, "#64748b");
+      ctx.fillStyle = kGrad;
+      ctx.fill();
+      ctx.strokeStyle = "#1e293b";
+      ctx.lineWidth = 1;
+      ctx.stroke();
       ctx.fillStyle = "#0f172a";
-      ctx.fillText(
-        rRatio >= 1
-          ? (isNightHeronHero() ? "雨夜天翔 READY! [R]" : isIronFistHero() ? "崩山轟拳 READY! [R]" : isAlice() ? "言靈領域 READY! [R]" : isShaka() ? "萬臂群控 READY! [R]" : isRaven() ? "日蝕雙槍 READY! [R]" : isMomo() ? "吸血鬼變身 READY! [R]" : isSamurai() ? "武士刀亂舞 READY! [R]" : "RELOAD READY! [R]")
-          : (isNightHeronHero() ? `RAIN ${player.reloadGauge}%` : isIronFistHero() ? `STEAM ${player.reloadGauge}%` : isAlice() ? `VOICE ${player.reloadGauge}%` : isShaka() ? `DHARMA ${player.reloadGauge}%` : isRaven() ? `ECLIPSE ${player.reloadGauge}%` : isMomo() ? `BLOOD ${player.reloadGauge}%` : isSamurai() ? `SWORD QI ${player.reloadGauge}%` : `RELOAD ${player.reloadGauge}%`),
-        62,
-        45
-      );
+      ctx.font = "900 8.5px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("R", kx + 8.5, ky + 8.5);
     }
+    ctx.restore();
 
-    // Small Skill Cooldown Pill (Right next to Top-Left HUD, shows [K] skill name & CD)
-    const skillName = isNightHeronHero() ? "雨燕迴避" : isIronFistHero() ? "鐵山靠" : isAlice() ? "言靈支配" : isShaka() ? "金剛鎖" : isRaven() ? "煙霧鉤爪" : isSamurai() ? "瞬步居合" : isMomo() ? "血蝠瞬閃" : "重裝震地";
-    const cdReady = player.skillCd <= 0;
-    const cdPct = cdReady ? 1 : 1 - player.skillCd / (player.skillMaxCd || 180);
-    ctx.fillStyle = "rgba(15, 23, 42, 0.80)";
-    ctx.fillRect(230, 10, 122, 48);
-    ctx.strokeStyle = cdReady ? "#38bdf8" : "#475569";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(230, 10, 122, 48);
-    ctx.fillStyle = cdReady ? "#7dd3fc" : "#94a3b8";
-    ctx.font = "bold 9px monospace";
-    ctx.textAlign = "left";
-    ctx.fillText(`[K] ${skillName}`, 237, 25);
-    ctx.fillStyle = "#334155";
-    ctx.fillRect(237, 33, 108, 13);
-    ctx.fillStyle = cdReady ? "#38bdf8" : "#64748b";
-    ctx.fillRect(237, 33, Math.floor(108 * cdPct), 13);
-    ctx.fillStyle = cdReady ? "#0f172a" : "#f8fafc";
-    ctx.font = "bold 9px monospace";
-    ctx.fillText(cdReady ? "READY!" : `CD ${(player.skillCd / 60).toFixed(1)}s`, 243, 43);
-
-    // Score & Stage (top-right)
-    ctx.fillStyle = "rgba(15, 23, 42, 0.78)";
-    ctx.fillRect(W - 186, 10, 176, 40);
-    ctx.strokeStyle = "#334155";
-    ctx.strokeRect(W - 186, 10, 176, 40);
-    ctx.fillStyle = "#fcd34d";
-    ctx.font = "bold 12px monospace";
+    // Sleek Frameless High-Contrast Floating Score & Stage Badge (top-right)
+    ctx.save();
     ctx.textAlign = "right";
-    ctx.fillText(`SCORE ${String(score).padStart(6, "0")}`, W - 18, 27);
-    ctx.fillStyle = "#94a3b8";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.92)";
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = "#fde047";
+    ctx.font = "900 14.5px monospace";
+    ctx.fillText(`SCORE ${String(score).padStart(6, "0")}`, W - 16, 26);
+    // Subtle glowing gold underline
+    const uGrad = ctx.createLinearGradient(W - 156, 31, W - 16, 31);
+    uGrad.addColorStop(0, "rgba(253, 224, 71, 0)");
+    uGrad.addColorStop(1, "rgba(253, 224, 71, 0.78)");
+    ctx.fillStyle = uGrad;
+    ctx.fillRect(W - 156, 30, 140, 1.5);
+    ctx.fillStyle = "#e2e8f0";
     ctx.font = "bold 10px monospace";
     const trainZone =
       player.x < 640
@@ -6682,14 +9162,50 @@
       8: `🚂 山線特快・${trainZone}`,
     };
     const wtHudStage = window.WorldTour ? window.WorldTour.getStage(currentStage) : null;
-    ctx.fillText((wtHudStage && wtHudStage.hudName) || stageNames[currentStage] || "STAGE", W - 18, 42);
+    ctx.fillText((wtHudStage && wtHudStage.hudName) || stageNames[currentStage] || "STAGE", W - 16, 44);
+    ctx.restore();
 
-    // Combo counter
+    // Bouncing Arcade Combo Counter + Dynamic Style Rank Badge (C -> B -> A -> S -> SS -> SSS)
     if (combo >= 2) {
-      ctx.fillStyle = "#fcd34d";
-      ctx.font = "900 18px monospace";
+      const rank =
+        combo >= 30 ? { g: "SSS", c: "#f43f5e" } :
+        combo >= 20 ? { g: "SS", c: "#fb923c" } :
+        combo >= 12 ? { g: "S", c: "#fde047" } :
+        combo >= 7 ? { g: "A", c: "#38bdf8" } :
+        combo >= 4 ? { g: "B", c: "#4ade80" } :
+        { g: "C", c: "#cbd5e1" };
+      const pop = Math.min(1.22, 1 + Math.max(0, comboTimer - 120) * 0.014);
+      ctx.save();
+      ctx.translate(W - 18, 76);
+      ctx.scale(pop, pop);
       ctx.textAlign = "right";
-      ctx.fillText(`${combo} HIT COMBO!`, W - 18, 76);
+      ctx.shadowColor = "rgba(0,0,0,0.85)";
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = rank.c;
+      ctx.font = "900 20px monospace";
+      ctx.fillText(`${rank.g}  ${combo} HIT!`, 0, 0);
+      ctx.restore();
+    }
+
+    // Dramatic Arcade BOSS WARNING Banner!
+    if (bossWarningTimer > 0) {
+      const flash = Math.sin(tick * 0.45) * 0.5 + 0.5;
+      ctx.save();
+      ctx.fillStyle = `rgba(127, 29, 29, ${0.42 + flash * 0.32})`;
+      ctx.fillRect(0, 128, W, 62);
+      ctx.fillStyle = "#ef4444";
+      ctx.fillRect(0, 128, W, 3);
+      ctx.fillRect(0, 187, W, 3);
+      ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(0,0,0,0.9)";
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = flash > 0.5 ? "#fef08a" : "#ffffff";
+      ctx.font = "900 22px monospace";
+      ctx.fillText("⚠  WARNING — BOSS APPROACHING  ⚠", W / 2, 156);
+      ctx.fillStyle = "#fecaca";
+      ctx.font = "bold 11px monospace";
+      ctx.fillText(bossWarningName || "強敵現身！準備迎戰！", W / 2, 177);
+      ctx.restore();
     }
 
     // GO! Arrow after wave clear
@@ -6700,15 +9216,22 @@
       ctx.fillText("GO! >>>", W - 20, 118);
     }
 
-    // Unlocked New Move Badge under HUD
+    // Welded Gunmetal Bottom Sub-Tab for Unlocked Lv.1-3 Ultimate Badge
     if (unlockedUltLevel >= 1) {
-      ctx.fillStyle = "rgba(15, 23, 42, 0.82)";
-      ctx.fillRect(10, 62, 214, 18);
-      ctx.strokeStyle = "#fbbf24";
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(10, 62, 214, 18);
-      ctx.fillStyle = "#fcd34d";
-      ctx.font = "bold 9px monospace";
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(56, 56);
+      ctx.lineTo(222, 56);
+      ctx.lineTo(214, 71);
+      ctx.lineTo(52, 71);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(15, 23, 42, 0.94)";
+      ctx.fill();
+      ctx.strokeStyle = "#64748b";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.fillStyle = "#fde047";
+      ctx.font = "900 8.5px monospace";
       ctx.textAlign = "left";
       const badgeLabel = isNightHeronHero()
         ? unlockedUltLevel >= 3
@@ -6757,7 +9280,8 @@
         : unlockedUltLevel >= 2
         ? "★★ Lv.2: 超廣域4連擊"
         : "★ Lv.1: 大範圍3連擊";
-      ctx.fillText(badgeLabel, 16, 74);
+      ctx.fillText(badgeLabel, 60, 66.5);
+      ctx.restore();
     }
 
     // Celebratory Skill Unlock Banner
@@ -6843,203 +9367,393 @@
   }
 
   function drawTitleOverlay() {
-    ctx.fillStyle = "rgba(10, 14, 23, 0.80)";
+    // Full-Screen Bespoke AAA Character Select Artwork for all 12 Heroes!
+    const selectImg = window.sprites && window.sprites.get(`select_${selectedChar}`);
+    if (selectImg && selectImg.width > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(selectImg, 0, 0, W, H);
+      // Subtle pulsing ENTER / CLICK deploy prompt above the roster bar on right side
+      if (Math.floor(tick / 26) % 2 === 0) {
+        ctx.textAlign = "center";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = "#fde047";
+        ctx.font = "bold 10.5px monospace";
+        ctx.fillText("▶ PRESS ENTER / CLICK 出戰世界地圖", 514, 266);
+      }
+      ctx.restore();
+      return;
+    }
+
+    // Fallback: Rich dark atmospheric tint over the live Harbour backdrop
+    ctx.fillStyle = "rgba(8, 11, 22, 0.68)";
     ctx.fillRect(0, 0, W, H);
 
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#f59e0b";
-    ctx.font = "bold 11px monospace";
-    ctx.fillText("TEST EDITION  •  SELECT YOUR FIGHTER (← / →)", W / 2, 46);
-
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "900 30px monospace";
-    ctx.fillText("PROTOCOL", W / 2, 82);
-
-    // Single-Fighter Spotlight Carousel (1 hero at a time with ◀ / ▶ arrow buttons!)
     const roster = [
-      {
-        id: "mustache",
-        title: "MUSTACHE HERO",
-        role: "重裝近戰力量型",
-        atk: "J  重拳三連擊",
-        skill: "K  重裝震地槌 (360° 擊飛)",
-        ult: "R  手臂上膛・爆氣連打",
-        color: "#f59e0b",
-      },
-      {
-        id: "samurai",
-        title: "STREET SAMURAI",
-        role: "高機動居合劍客",
-        atk: "J  武士刀三連橫砍",
-        skill: "K  殘影瞬步・居合斬",
-        ult: "R  劍氣亂舞 / Lv.3 雙刀突進",
-        color: "#38bdf8",
-      },
-      {
-        id: "momo",
-        title: "MOMO 🦇",
-        role: "中距控場・吸血續戰",
-        atk: "J  防狼噴霧 (長硬直控場)",
-        skill: "K  血蝠瞬閃 (留霧 / 血霧吸血)",
-        ult: "R  吸血鬼覺醒・長爪吸血",
-        color: "#f43f5e",
-      },
-      {
-        id: "raven",
-        title: "RAVEN 🐦‍⬛",
-        role: "暗影會・遠近毒刃刺客",
-        atk: "J  暗殺短刃 + 雙毒飛刀",
-        skill: "K  煙霧鉤爪 (背刺 / 影遁)",
-        ult: "R  日蝕雙槍 / Lv.3 交叉處決",
-        color: "#d4af37",
-      },
-      {
-        id: "shaka",
-        title: "釋迦 SHAKA ☸️",
-        role: "超長距靈臂・束縛群控",
-        atk: "J  靈臂延伸・三連掌聚敵",
-        skill: "K  金剛鎖 (1.5秒定身 / 護障)",
-        ult: "R  千手萬臂群控 / 金光天墜",
-        color: "#fde68a",
-      },
-      {
-        id: "alice",
-        title: "ALICE 愛麗絲 🌹",
-        role: "言靈支配・破甲指虎格鬥",
-        atk: "J  黃銅指虎・破甲薔薇連打",
-        skill: "K  言靈「跪下！」(2.5秒破甲)",
-        ult: "R  絕對契約・言靈領域 / 彈指臣服",
-        color: "#e11d48",
-      },
-      {
-        id: "ironfist",
-        title: "鐵拳 IRON FIST 🥊",
-        role: "末班機反派・崩山重拳型",
-        atk: "J  白繃帶三段・半拍突進重拳",
-        skill: "K  繃帶緊束・鐵山靠衝撞",
-        ult: "R  崩山轟拳 / Lv.3 末班起飛合體",
-        color: "#f59e0b",
-      },
-      {
-        id: "nightheron",
-        title: "夜鷺 NIGHT HERON 👞",
-        role: "末班機反派・雨幕插袋腿技",
-        atk: "J  插袋連踢・水花月牙低掃",
-        skill: "K  鞋跟輕叩・雨燕迴避反踢",
-        ult: "R  雨夜天翔 / Lv.3 末班起飛斜踢",
-        color: "#38bdf8",
-      },
+      { id: "mustache", cn: "八字鬍英雄", en: "M U S T A C H E   H E R O", tagline: "雙拳震碎大地，手臂上膛爆氣連打。", j: "重拳三連擊", k: "重裝震地槌", r: "手臂上膛・爆氣", color: "#f59e0b", skillKey: "ground_slam" },
+      { id: "samurai", cn: "街頭武士", en: "S T R E E T   S A M U R A I", tagline: "殘影居合瞬斬，雙刀劍氣橫掃全場。", j: "武士刀三連斬", k: "殘影瞬步居合", r: "劍氣亂舞・雙刀", color: "#38bdf8", skillKey: "shadow_dash" },
+      { id: "momo", cn: "莫莫", en: "M O M O", tagline: "血蝠瞬閃控場，真祖覺醒長爪吸血。", j: "防狼噴霧控場", k: "血蝠瞬閃血霧", r: "吸血鬼真祖覺醒", color: "#f43f5e", skillKey: "bat_blink" },
+      { id: "raven", cn: "烏鴉", en: "R A V E N", tagline: "暗影毒刃背刺，日蝕雙槍全場處決。", j: "暗殺短刃毒刀", k: "煙霧鉤爪影遁", r: "日蝕雙槍處決", color: "#d4af37", skillKey: "grapple_smoke" },
+      { id: "shaka", cn: "釋迦", en: "S H A K A", tagline: "靈臂金剛鎖敵，如來神掌金光天墜。", j: "靈臂三連聚敵", k: "金剛鎖・如來掌", r: "千手觀音天墜", color: "#fde68a", skillKey: "shaka_bind" },
+      { id: "alice", cn: "愛麗絲", en: "A L I C E", tagline: "黃銅指虎破甲，言靈契約絕對臣服。", j: "薔薇指虎連打", k: "言靈・跪下破甲", r: "絕對契約領域", color: "#fb7185", skillKey: "alice_voice" },
+      { id: "ironfist", cn: "鐵拳", en: "I R O N   F I S T", tagline: "白繃帶剛猛重拳，鐵山靠崩山裂地。", j: "白繃帶剛拳三連", k: "鐵壁・鐵山靠", r: "蒸氣崩山轟拳", color: "#fb923c", skillKey: "if_shoulder" },
+      { id: "nightheron", cn: "夜鷺", en: "N I G H T   H E R O N", tagline: "雙手插袋旋踢，雨幕水刃天翔制空。", j: "插袋旋風三連踢", k: "踏影迴避旋踢", r: "雨夜天翔水刃", color: "#60a5fa", skillKey: "nh_evade_kick" },
+      { id: "magic", cn: "瑪姬", en: "M A G I C", tagline: "深淵裂縫牽引，暗影魔爪破土吞噬。", j: "黑魔法飛彈連射", k: "能量牽引・深淵爪", r: "暗影女皇降臨", color: "#c084fc", skillKey: "magic_vortex" },
+      { id: "ling", cn: "鈴", en: "L I N G", tagline: "四象靈契輪轉，八卦落雷火鳳天降。", j: "三聖獸輪轉連擊", k: "玄武印・四象雷", r: "四象靈契齊衝", color: "#2dd4bf", skillKey: "ling_xuanwu" },
+      { id: "rose", cn: "蘿絲", en: "R O S E", tagline: "桃紅腦波支配，煉獄火柱焚盡一切。", j: "烈焰火拳三連轟", k: "精神支配・煉獄焰", r: "群體暗示・煉獄拳", color: "#fb923c", skillKey: "rose_psychic" },
+      { id: "fallen", cn: "墮落天使", en: "F A L L E N   A N G E L", tagline: "雙翼擊飛敵群，舉劍召下骸靈。", j: "羽翼風壓", k: "審判降臨", r: "審判之痕", color: "#e9d5ff", skillKey: "fallen_judgment" },
     ];
 
     const activeIdx = Math.max(0, roster.findIndex((r) => r.id === selectedChar));
     const cur = roster[activeIdx];
 
-    // Left & Right Floating Transparent Arrow Buttons (◀ / ▶)
-    const pulse = Math.sin(tick * 0.12) * 2.5;
-    const drawArrowBtn = (bx, by, bw, bh, dir) => {
+    // === 1. LEFT 35%: GIANT HERO SPLASH PORTRAIT WITH SEAMLESS CINEMATIC FADE ===
+    const splashImg = window.sprites && window.sprites.get(`hero_${cur.id}_portrait`);
+    if (splashImg) {
       ctx.save();
-      ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
-      ctx.shadowBlur = 10;
-      ctx.fillStyle = cur.color;
-      ctx.font = "900 28px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText(dir < 0 ? "◀" : "▶", bx + bw / 2 + dir * pulse * 0.6, by + bh / 2 + 10);
+      ctx.beginPath();
+      ctx.rect(0, 0, 248, 290);
+      ctx.clip();
+      ctx.drawImage(splashImg, 0, 0, splashImg.width, splashImg.height, -12, -4, 266, 266);
+      const rightFade = ctx.createLinearGradient(118, 0, 248, 0);
+      rightFade.addColorStop(0, "rgba(8, 11, 22, 0)");
+      rightFade.addColorStop(0.65, "rgba(8, 11, 22, 0.78)");
+      rightFade.addColorStop(1, "rgba(8, 11, 22, 1)");
+      ctx.fillStyle = rightFade;
+      ctx.fillRect(118, 0, 130, 290);
+      const botFade = ctx.createLinearGradient(0, 210, 0, 290);
+      botFade.addColorStop(0, "rgba(8, 11, 22, 0)");
+      botFade.addColorStop(1, "rgba(8, 11, 22, 0.96)");
+      ctx.fillStyle = botFade;
+      ctx.fillRect(0, 210, 248, 80);
       ctx.restore();
-    };
-    drawArrowBtn(64, 166, 52, 58, -1);
-    drawArrowBtn(524, 166, 52, 58, 1);
-
-    // Center Transparent Spotlight Showcase (no opaque card box!)
-    const cardX = 136;
-    const cardY = 110;
-    const cardW = 368;
-    const cardH = 162;
-
-    // Subtle colored spotlight pedestal on left half
-    const heroX = cardX + 86;
-    const heroY = cardY + 136;
-    ctx.save();
-    ctx.strokeStyle = cur.color;
-    ctx.globalAlpha = 0.65;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(heroX, heroY, 44, 12, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    const previewDummy = {
-      z: 0,
-      facing: 1,
-      walkFrame: tick * 0.08,
-      attackTimer: 0,
-      attackType: 0,
-      eatTimer: 0,
-    };
-
-    if (cur.id === "nightheron") {
-      drawNightHeronSprite({ ...previewDummy, charId: "nightheron" }, heroX, heroY, true, 1.12);
-    } else if (cur.id === "ironfist") {
-      drawIronFistSprite({ ...previewDummy, charId: "ironfist" }, heroX, heroY, true, 1.12);
-    } else if (cur.id === "alice") {
-      drawAliceSprite({ ...previewDummy, charId: "alice" }, heroX, heroY, true, 1.12);
-    } else if (cur.id === "shaka") {
-      drawShakaSprite({ ...previewDummy, charId: "shaka" }, heroX, heroY, false, 1.05);
-    } else if (cur.id === "raven") {
-      drawRavenSprite({ ...previewDummy, charId: "raven" }, heroX, heroY, true, 1.12);
-    } else if (cur.id === "momo") {
-      drawMomoSprite({ ...previewDummy, charId: "momo" }, heroX, heroY, false, 1.15);
-    } else if (cur.id === "samurai") {
-      drawSamuraiSprite({ ...previewDummy, charId: "samurai" }, heroX, heroY, true, 1.15);
-    } else {
-      drawMustacheSprite({ ...previewDummy, charId: "mustache" }, heroX, heroY, false, 1.15);
     }
 
-    // Right-side Fighter Profile & Move List (clean floating typography with soft shadow)
-    const infoX = cardX + 162;
+    // === 2. CENTER: LIVE ANIMATED HERO SPRITE ON 2.5D ROTATING MAGIC AURA PEDESTAL ===
+    const heroX = 314;
+    const heroY = 236;
+    if (window.sprites && window.sprites.get(`aura_${cur.id}`)) {
+      drawUltimateAuraRing(cur.id, heroX, heroY + 6, 1.24);
+    } else {
+      ctx.save();
+      ctx.strokeStyle = cur.color;
+      ctx.globalAlpha = 0.65;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(heroX, heroY + 6, 48, 13, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Live interactive preview animation driven by selected J / K / R skill row!
+    const cycleTick = tick % 48;
+    const isPrevJ = titlePreviewMode === 0;
+    const isPrevK = titlePreviewMode === 1;
+    const isPrevR = titlePreviewMode === 2;
+    const previewDummy = {
+      charId: cur.id,
+      z: isPrevK && (cur.id === "fallen" || cur.id === "shaka") ? 6 + Math.sin(tick * 0.14) * 3 : 0,
+      facing: 1,
+      walkFrame: tick * 0.08,
+      attackTimer: isPrevJ || isPrevR ? (cycleTick < 26 ? 12 : 0) : 0,
+      attackType: Math.floor(tick / 48) % 3,
+      skillType: isPrevK ? cur.skillKey : "",
+      skillActiveTimer: isPrevK ? (cycleTick < 30 ? Math.max(1, 28 - Math.floor(cycleTick * 0.9)) : 0) : 0,
+      eatTimer: 0,
+      fallenFinisherVisual: isPrevR && cur.id === "fallen" && cycleTick > 28 ? 24 : 0,
+      roseFinisherVisual: isPrevR && cur.id === "rose" && cycleTick > 28 ? 20 : 0,
+      lingFinisherVisual: isPrevR && cur.id === "ling" && cycleTick > 28 ? 20 : 0,
+      magicFinisherVisual: isPrevR && cur.id === "magic" && cycleTick > 28 ? 20 : 0,
+      shakaFinisherVisual: isPrevR && cur.id === "shaka" && cycleTick > 28 ? 20 : 0,
+    };
+
+    const previewBuff = isPrevR;
+    if (cur.id === "fallen") {
+      drawFallenSprite(previewDummy, heroX, heroY, previewBuff, 1.08);
+    } else if (cur.id === "rose") {
+      drawRoseSprite(previewDummy, heroX, heroY, previewBuff, 1.14);
+    } else if (cur.id === "ling") {
+      drawLingSprite(previewDummy, heroX, heroY, previewBuff, 1.14);
+    } else if (cur.id === "magic") {
+      drawMagicSprite(previewDummy, heroX, heroY, previewBuff, 1.12);
+    } else if (cur.id === "nightheron") {
+      drawNightHeronSprite(previewDummy, heroX, heroY, true, 1.14);
+    } else if (cur.id === "ironfist") {
+      drawIronFistSprite(previewDummy, heroX, heroY, true, 1.14);
+    } else if (cur.id === "alice") {
+      drawAliceSprite(previewDummy, heroX, heroY, true, 1.14);
+    } else if (cur.id === "shaka") {
+      drawShakaSprite(previewDummy, heroX, heroY, previewBuff, 1.08);
+    } else if (cur.id === "raven") {
+      drawRavenSprite(previewDummy, heroX, heroY, previewBuff || true, 1.14);
+    } else if (cur.id === "momo") {
+      drawMomoSprite(previewDummy, heroX, heroY, previewBuff, 1.16);
+    } else if (cur.id === "samurai") {
+      drawSamuraiSprite(previewDummy, heroX, heroY, previewBuff || true, 1.16);
+    } else {
+      drawMustacheSprite(previewDummy, heroX, heroY, previewBuff, 1.16);
+    }
+
+    // === 3. RIGHT 40%: SLEEK EDITORIAL CHARACTER PROFILE & J / K / R SKILL BARS ===
     ctx.save();
-    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
-    ctx.shadowBlur = 8;
+    ctx.strokeStyle = "rgba(253, 224, 71, 0.45)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(414, 30);
+    ctx.lineTo(448, 30);
+    ctx.moveTo(548, 30);
+    ctx.lineTo(576, 30);
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fde68a";
+    ctx.font = "bold 9px monospace";
+    ctx.fillText("P R O T O C O L", 498, 33);
+
     ctx.textAlign = "right";
     ctx.fillStyle = "#cbd5e1";
     ctx.font = "bold 10px monospace";
-    ctx.fillText(`${activeIdx + 1} / ${roster.length}`, cardX + cardW - 12, cardY + 18);
+    ctx.fillText(`${activeIdx + 1} / ${roster.length}`, 622, 33);
 
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "900 18px monospace";
-    ctx.fillText(cur.title, infoX, cardY + 38);
+    ctx.textAlign = "center";
+    ctx.font = "900 28px Georgia, \x27Noto Serif TC\x27, serif";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+    ctx.shadowBlur = 10;
+    const nameGrad = ctx.createLinearGradient(0, 48, 0, 86);
+    nameGrad.addColorStop(0, "#ffffff");
+    nameGrad.addColorStop(0.55, "#fef3c7");
+    nameGrad.addColorStop(1, "#eab308");
+    ctx.fillStyle = nameGrad;
+    ctx.fillText(cur.cn, 514, 78);
+    ctx.shadowBlur = 0;
 
-    ctx.fillStyle = cur.color;
+    ctx.fillStyle = "#cbd5e1";
+    ctx.font = "bold 9px monospace";
+    ctx.fillText(cur.en, 514, 98);
+
+    ctx.fillStyle = "#e2e8f0";
     ctx.font = "bold 10.5px monospace";
-    ctx.fillText(cur.role, infoX, cardY + 56);
+    ctx.fillText(cur.tagline, 514, 124);
 
-    ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-    ctx.fillRect(infoX, cardY + 66, cardW - 178, 1);
+    const divGrad = ctx.createLinearGradient(414, 136, 616, 136);
+    divGrad.addColorStop(0, "rgba(253, 224, 71, 0)");
+    divGrad.addColorStop(0.5, "rgba(253, 224, 71, 0.65)");
+    divGrad.addColorStop(1, "rgba(253, 224, 71, 0)");
+    ctx.fillStyle = divGrad;
+    ctx.fillRect(414, 136, 202, 1);
 
-    ctx.fillStyle = "#f1f5f9";
-    ctx.font = "bold 10.5px monospace";
-    ctx.fillText(cur.atk, infoX, cardY + 88);
-    ctx.fillStyle = "#7dd3fc";
-    ctx.fillText(cur.skill, infoX, cardY + 110);
-    ctx.fillStyle = "#fcd34d";
-    ctx.fillText(cur.ult, infoX, cardY + 132);
-    ctx.restore();
+    const skillRows = [
+      { key: "J", name: cur.j, bg: "rgba(127, 29, 29, 0.85)", accent: "#f87171", glow: "rgba(248, 113, 113, 0.25)" },
+      { key: "K", name: cur.k, bg: "rgba(12, 74, 110, 0.92)", accent: "#38bdf8", glow: "rgba(56, 189, 248, 0.30)" },
+      { key: "R", name: cur.r, bg: "rgba(113, 63, 18, 0.88)", accent: "#fde047", glow: "rgba(253, 224, 71, 0.25)" },
+    ];
+    skillRows.forEach((row, rIdx) => {
+      const ry = 152 + rIdx * 32;
+      const rx = 418;
+      const rw = 194;
+      const rh = 24;
+      const activeRow = titlePreviewMode === rIdx;
 
-    // Pagination Dots (● ○ ○ ○ ○)
-    const dotStartX = W / 2 - ((roster.length - 1) * 18) / 2;
-    for (let i = 0; i < roster.length; i++) {
-      ctx.beginPath();
-      ctx.arc(dotStartX + i * 18, 289, i === activeIdx ? 4.5 : 3, 0, Math.PI * 2);
-      ctx.fillStyle = i === activeIdx ? cur.color : "#475569";
+      ctx.save();
+      drawSlantedRect(rx, ry, rw, rh, 6);
+      if (activeRow) {
+        const rg = ctx.createLinearGradient(rx, ry, rx + rw, ry);
+        rg.addColorStop(0, row.glow);
+        rg.addColorStop(0.6, "rgba(15, 23, 42, 0.85)");
+        rg.addColorStop(1, "rgba(15, 23, 42, 0.35)");
+        ctx.fillStyle = rg;
+        ctx.fill();
+        ctx.shadowColor = row.accent;
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = row.accent;
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = "rgba(15, 23, 42, 0.56)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.20)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+
+      drawSlantedRect(rx, ry, 34, rh, 6);
+      ctx.fillStyle = row.bg;
       ctx.fill();
-    }
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 12px Georgia, serif";
+      ctx.textAlign = "center";
+      ctx.fillText(row.key, rx + 20, ry + 16);
+
+      ctx.fillStyle = "rgba(226, 232, 240, 0.35)";
+      ctx.fillRect(rx + 44, ry + 5, 1, 14);
+      ctx.fillStyle = activeRow ? "#ffffff" : "#cbd5e1";
+      ctx.font = "bold 11.5px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(row.name, rx + 54, ry + 16);
+
+      if (activeRow) {
+        ctx.fillStyle = row.accent;
+        ctx.textAlign = "right";
+        ctx.font = "900 12px monospace";
+        ctx.fillText("›", rx + rw - 6, ry + 16);
+      }
+      ctx.restore();
+    });
 
     ctx.textAlign = "center";
     if (Math.floor(tick / 24) % 2 === 0) {
-      ctx.fillStyle = "#fcd34d";
-      ctx.font = "bold 13.5px monospace";
-      ctx.fillText("[ PRESS ENTER OR CLICK CARD — 前往世界地圖選擇關卡 ]", W / 2, 326);
+      ctx.fillStyle = "#fde047";
+      ctx.font = "bold 10.5px monospace";
+      ctx.fillText("▶ PRESS ENTER / CLICK 出戰世界地圖", 514, 266);
     }
+    ctx.restore();
+
+    // === 4. BOTTOM ROSTER BAR: GOLD DIAMOND RULE + ◀ + 12 PORTRAITS + ▶ ===
+    ctx.save();
+    ctx.fillStyle = "rgba(7, 10, 20, 0.90)";
+    ctx.fillRect(0, 282, W, 78);
+
+    const topLine = ctx.createLinearGradient(0, 282, W, 282);
+    topLine.addColorStop(0, "rgba(253, 224, 71, 0.08)");
+    topLine.addColorStop(0.5, "rgba(253, 224, 71, 0.72)");
+    topLine.addColorStop(1, "rgba(253, 224, 71, 0.08)");
+    ctx.fillStyle = topLine;
+    ctx.fillRect(0, 282, W, 1.2);
+    ctx.fillStyle = "#fde047";
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 277);
+    ctx.lineTo(W / 2 + 5, 282.5);
+    ctx.lineTo(W / 2, 288);
+    ctx.lineTo(W / 2 - 5, 282.5);
+    ctx.closePath();
+    ctx.fill();
+
+    const pulse = Math.sin(tick * 0.12) * 1.8;
+    ctx.fillStyle = "#c084fc";
+    ctx.font = "900 16px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("◀", 24 - pulse, 326);
+    ctx.fillText("▶", W - 24 + pulse, 326);
+
+    const slotW = 45;
+    const stripStartX = W / 2 - (roster.length * slotW) / 2;
+    for (let i = 0; i < roster.length; i++) {
+      const r = roster[i];
+      const isAct = i === activeIdx;
+      const sz = isAct ? 42 : 38;
+      const px = Math.round(stripStartX + i * slotW + (slotW - sz) / 2);
+      const py = isAct ? 298 : 300;
+      const pImg = window.sprites && window.sprites.get(`hero_${r.id}_portrait`);
+
+      ctx.save();
+      if (!isAct) ctx.globalAlpha = 0.74;
+      ctx.fillStyle = "#0b1120";
+      ctx.fillRect(px, py, sz, sz);
+      if (pImg) {
+        ctx.drawImage(pImg, 0, 0, pImg.width, pImg.height, px, py, sz, sz);
+      }
+      ctx.strokeStyle = isAct ? "#fde047" : "rgba(148, 163, 184, 0.35)";
+      ctx.lineWidth = isAct ? 2 : 1;
+      ctx.strokeRect(px, py, sz, sz);
+
+      if (isAct) {
+        ctx.shadowColor = "#fde047";
+        ctx.shadowBlur = 8;
+        ctx.strokeStyle = "#fef08a";
+        ctx.lineWidth = 2;
+        const b = 7;
+        const o = 3;
+        ctx.beginPath();
+        ctx.moveTo(px - o, py - o + b); ctx.lineTo(px - o, py - o); ctx.lineTo(px - o + b, py - o);
+        ctx.moveTo(px + sz + o - b, py - o); ctx.lineTo(px + sz + o, py - o); ctx.lineTo(px + sz + o, py - o + b);
+        ctx.moveTo(px - o, py + sz + o - b); ctx.lineTo(px - o, py + sz + o); ctx.lineTo(px - o + b, py + sz + o);
+        ctx.moveTo(px + sz + o - b, py + sz + o); ctx.lineTo(px + sz + o, py + sz + o); ctx.lineTo(px + sz + o, py + sz + o - b);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawStageClearOverlay() {
+    const sum = stageClearSummary;
+    if (!sum) return;
+    ctx.save();
+    ctx.fillStyle = "rgba(6, 10, 20, 0.78)";
+    ctx.fillRect(0, 0, W, H);
+
+    // Glossy Arcade Summary Card
+    const cx = 110, cy = 54, cw = 420, ch = 248;
+    ctx.fillStyle = "rgba(15, 23, 42, 0.96)";
+    ctx.fillRect(cx, cy, cw, ch);
+    ctx.strokeStyle = sum.rank === "S" ? "#fde047" : "#38bdf8";
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(cx, cy, cw, ch);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#fde047";
+    ctx.font = "900 18px monospace";
+    ctx.fillText("✦ STAGE CLEAR ✦", W / 2, cy + 30);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "bold 11.5px monospace";
+    ctx.fillText(sum.title, W / 2, cy + 50);
+
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    ctx.fillRect(cx + 22, cy + 62, cw - 44, 1);
+
+    // Left stats column
+    ctx.textAlign = "left";
+    const rows = [
+      ["通關時間", `${sum.timeSec} 秒`, "#f8fafc"],
+      ["最高連段", `${sum.maxCombo} HIT`, "#38bdf8"],
+      ["享用烤肉", `${sum.briskets} 塊`, "#fb923c"],
+      ["無傷獎勵", sum.noDamageBonus > 0 ? `+${sum.noDamageBonus} PERFECT!` : "+0", sum.noDamageBonus > 0 ? "#4ade80" : "#94a3b8"],
+      ["總分紀錄", `${score}`, "#fde047"],
+    ];
+    rows.forEach(([label, val, col], idx) => {
+      const ry = cy + 88 + idx * 22;
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "bold 11px monospace";
+      ctx.fillText(label, cx + 28, ry);
+      ctx.fillStyle = col;
+      ctx.fillText(val, cx + 116, ry);
+    });
+
+    // Right Rank Stamp
+    const rankColors = { S: "#fde047", A: "#38bdf8", B: "#4ade80", C: "#cbd5e1" };
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "bold 10px monospace";
+    ctx.fillText("CLEAR RANK", cx + cw - 78, cy + 92);
+    ctx.shadowColor = rankColors[sum.rank] || "#fde047";
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = rankColors[sum.rank] || "#fde047";
+    ctx.font = "900 62px monospace";
+    ctx.fillText(sum.rank, cx + cw - 78, cy + 158);
+    ctx.shadowBlur = 0;
+
+    // Bottom Action Buttons
+    ctx.fillStyle = "rgba(234, 88, 12, 0.94)";
+    ctx.fillRect(144, 248, 168, 36);
+    ctx.strokeStyle = "#fde047";
+    ctx.lineWidth = 1.8;
+    ctx.strokeRect(144, 248, 168, 36);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 12px monospace";
+    ctx.fillText(sum.hasNext ? "▶ 下一關 (ENTER)" : "🏆 結算畫面 (ENTER)", 228, 270);
+
+    ctx.fillStyle = "rgba(30, 41, 59, 0.94)";
+    ctx.fillRect(332, 248, 164, 36);
+    ctx.strokeStyle = "#94a3b8";
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(332, 248, 164, 36);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "bold 11.5px monospace";
+    ctx.fillText("🗺️ 回世界地圖", 414, 270);
+    ctx.restore();
   }
 
   function drawCenterBanner(title, sub) {
